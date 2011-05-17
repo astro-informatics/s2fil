@@ -1,0 +1,6 @@
+# Dilation file
+# Written by J.McEwen
+unit:       radian
+n_dil:           1
+     1      0.1000      0.1000
+     2      0.0500      0.0500
