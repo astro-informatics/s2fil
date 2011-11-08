@@ -1,5 +1,4 @@
 # Makefile for s2fil
-# Jason McEwen
 
 
 # ======== OPTIONS ========
@@ -22,7 +21,7 @@ OPT = $(OPTPGPLOT) -m64
 
 # ======== LINKS ========
 
-PROGDIR = /Users/jdm/Src
+PROGDIR = ..
 
 HPIXDIR = $(PROGDIR)/Healpix
 HPIXLIB = $(HPIXDIR)/lib
@@ -83,7 +82,7 @@ endif
 
 ifeq ($(USEFFTW),yes)
   LDFLAGSFFTW   = -L$(FFTWLIB) \
-                  -l$(FFTWLIBNM) -l$(RFFTWLIBNM) 
+                  -l$(RFFTWLIBNM) -l$(FFTWLIBNM) 
 endif
 
 LDFLAGS =  -L$(S2FILLIB) -l$(S2FILLIBNM) \
