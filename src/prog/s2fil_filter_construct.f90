@@ -327,7 +327,7 @@ program s2fil_filter_construct
         call getArgument(i,opt)
      
         if (i == n .and. trim(opt) /= '-help') then
-          write(*,*) 'option ', trim(opt), ' has no argument'
+          write(*,'(a,a,a)') 'Option ', trim(opt), ' has no argument'
           stop
         end if
      
@@ -393,7 +393,7 @@ program s2fil_filter_construct
             scale_type_string = trim(arg)
 
           case default
-            print '("unknown option ",a4," ignored")', trim(opt)
+            print '("Unknown option ",a," ignored")', trim(opt)            
 
         end select
       end do

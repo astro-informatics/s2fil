@@ -16,7 +16,7 @@ FC      = gfortran
 ifneq ($(USEPGPLOT),yes)
   OPTPGPLOT     = -DNO_PGPLOT
 endif
-OPT = $(OPTPGPLOT) -m64
+OPT = $(OPTPGPLOT) -m64 -O3 -DS2FIL_VERSION=\"1.0b2\" -DS2FIL_BUILD=\"`svnversion -n .`\" 
 
 
 # ======== LINKS ========
@@ -124,7 +124,8 @@ prog:    $(S2FILBIN)/s2fil_filter_construct   \
          $(S2FILBIN)/s2fil_field_construct    \
 	 $(S2FILBIN)/s2fil_localisation_thres \
          $(S2FILBIN)/s2fil_draw_dots          \
-         $(S2FILBIN)/s2fil_draw_dots_only
+         $(S2FILBIN)/s2fil_draw_dots_only     \
+         $(S2FILBIN)/s2fil_about
 
 $(S2FILINC)/%.o: $(S2FILSRC)/%.f90
 	$(FC) $(FFLAGS) $(PPFLAGS) -c $< -o $@ 
@@ -223,4 +224,8 @@ $(S2FILBIN)/s2fil_draw_dots_only:   $(S2FILINC)/s2fil_draw_dots_only.o
 	$(FC) -o $(S2FILBIN)/s2fil_draw_dots_only \
         $(S2FILINC)/s2fil_draw_dots_only.o $(LDFLAGS) $(PPFLAGS)
 
+$(S2FILINC)/s2fil_about.o: $(S2FILPROG)/s2fil_about.f90 lib
+$(S2FILBIN)/s2fil_about:   $(S2FILINC)/s2fil_about.o
+	$(FC) -o $(S2FILBIN)/s2fil_about \
+        $(S2FILINC)/s2fil_about.o $(LDFLAGS) $(PPFLAGS)
 

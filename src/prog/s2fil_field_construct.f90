@@ -116,7 +116,7 @@ program s2fil_field_construct
         call getArgument(i,opt)
      
         if (i == n .and. trim(opt) /= '-help') then
-          write(*,*) 'option ', trim(opt), ' has no argument'
+          write(*,'(a,a,a)') 'Option ', trim(opt), ' has no argument'
           stop
         end if
      
@@ -159,7 +159,7 @@ program s2fil_field_construct
             read(arg,*) write_filter
 
           case default
-            print '("unknown option ",a4," ignored")', trim(opt)
+            print '("Unknown option ",a," ignored")', trim(opt)            
 
         end select
       end do
