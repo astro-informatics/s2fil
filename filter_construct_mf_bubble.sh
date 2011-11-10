@@ -19,6 +19,9 @@ bin/s2fil_filter_construct \
 #median(Nobs)
 #ans =
 #     8.885183105468750e+03
+#std(Nobs)
+#ans =
+#     3.525765578333145e+03
 
 # noise based on median
 #n_var = (6.549/sqrt(median(Nobs)))^2
