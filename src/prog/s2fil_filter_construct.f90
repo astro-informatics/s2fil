@@ -40,6 +40,7 @@
 program s2fil_filter_construct
 
   use s2_types_mod
+  use s2_error_mod
   use s2_sky_mod
   use s2_pl_mod
   use s2_vect_mod, only: s2_vect_arcmin_to_rad
@@ -82,6 +83,14 @@ program s2fil_filter_construct
     TMPL_TYPE_BUTTERFLY = 'butterfly', &
     TMPL_TYPE_BUBBLE = 'bubble'
   character(len=S2_STRING_LEN) :: tmpl_type
+  character(len=S2_STRING_LEN) :: tmpl_param_file
+  logical :: param_file_present = .false.
+  character(len=1), parameter :: COMMENT_CHAR = '#'
+  character(len=S2_STRING_LEN) :: line, line2
+  integer :: fileid_tmpl_param = 31
+  real(s2_sp), allocatable :: tmpl_params(:)
+  integer :: fail = 0
+  integer :: n_tmpl_params, iparam
 
   integer :: nside, lmax, mmax, pix_scheme, background_read_lmin
   logical :: norm_pres_dil, background_read_scale
@@ -130,39 +139,116 @@ program s2fil_filter_construct
   ! Initialise template
   ! --------------------------------------
 
-  select case(trim(tmpl_type))
+  ! If template parameter file present, then read template parameters
+  ! from file.
+  if (param_file_present) then
+
+     ! Open file
+     open(fileid_tmpl_param, file=tmpl_param_file, &
+          form='formatted', status='old')
+
+     ! Ignore leading comment lines.
+     line = COMMENT_CHAR
+     do while(line(1:1) == COMMENT_CHAR)
+        read(fileid_tmpl_param,'(a)') line
+     end do
+
+     ! Read number of template paramaters from last line read (that is
+     ! actually not a comment line).
+     read(line, *) line2, n_tmpl_params
+
+     ! Allocate space for parameters.
+     allocate(tmpl_params(1:n_tmpl_params), stat=fail)
+     if(fail /= 0) then
+        call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_filter_construct')
+     end if
+
+     ! Read data for sources found.
+     do iparam = 1,n_tmpl_params
+        read(fileid_tmpl_param,*) tmpl_params(iparam)
+     end do
+
+     ! Close file
+     close(fileid_tmpl_param)
+
+     ! Define template with parameters read from file.
+     select case(trim(tmpl_type))
 
      case(trim(TMPL_TYPE_GAUSSIAN))
-        
+
         tmpl = s2_sky_init(comb_tmplmap_gaussian, nside, pix_scheme, &
-          lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
- 
+             lmax, mmax, param=tmpl_params, &
+             fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
      case(trim(TMPL_TYPE_MEXHAT))
-        
+
         tmpl = s2_sky_init(comb_tmplmap_mexhat, nside, pix_scheme, &
-          lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+             lmax, mmax, param=tmpl_params, &
+             fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
      case(trim(TMPL_TYPE_MORLET))
-        
+
         tmpl = s2_sky_init(comb_tmplmap_morlet, nside, pix_scheme, &
-          lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+             lmax, mmax, param=tmpl_params, &
+             fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
      case(trim(TMPL_TYPE_BUTTERFLY))
-        
+
         tmpl = s2_sky_init(comb_tmplmap_butterfly, nside, pix_scheme, &
-          lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+             lmax, mmax, param=tmpl_params, &
+             fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
      case(trim(TMPL_TYPE_BUBBLE))
-        
+
         tmpl = s2_sky_init(comb_tmplmap_bubble, nside, pix_scheme, &
-          lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+             lmax, mmax, param=tmpl_params, &
+             fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
      case default
 
         call s2fil_error(S2FIL_ERROR_PROG_INPUT_INVALID, &
-          's2fil_filter_construct', comment_add='Invalid template type')
+             's2fil_filter_construct', comment_add='Invalid template type')
 
-  end select
+     end select
+
+  else
+
+     ! Define template with default parameters.
+     select case(trim(tmpl_type))
+
+     case(trim(TMPL_TYPE_GAUSSIAN))
+
+        tmpl = s2_sky_init(comb_tmplmap_gaussian, nside, pix_scheme, &
+             lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case(trim(TMPL_TYPE_MEXHAT))
+
+        tmpl = s2_sky_init(comb_tmplmap_mexhat, nside, pix_scheme, &
+             lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case(trim(TMPL_TYPE_MORLET))
+
+        tmpl = s2_sky_init(comb_tmplmap_morlet, nside, pix_scheme, &
+             lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case(trim(TMPL_TYPE_BUTTERFLY))
+
+        tmpl = s2_sky_init(comb_tmplmap_butterfly, nside, pix_scheme, &
+             lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case(trim(TMPL_TYPE_BUBBLE))
+
+        tmpl = s2_sky_init(comb_tmplmap_bubble, nside, pix_scheme, &
+             lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case default
+
+        call s2fil_error(S2FIL_ERROR_PROG_INPUT_INVALID, &
+             's2fil_filter_construct', comment_add='Invalid template type')
+
+     end select
+
+  end if
 
 !  ! Uses cswt template definitions.
 !  select case(trim(tmpl_type))
@@ -302,6 +388,7 @@ program s2fil_filter_construct
   if(cmb_present) call s2_pl_free(background_cmb)
   if(noise_present) call s2_pl_free(background_noise)
   if(beam_present) call s2_pl_free(beam)
+  if(param_file_present) deallocate(tmpl_params)
   call s2_pl_free(background)
   call s2fil_filter_free(filter)
 
@@ -363,6 +450,8 @@ program s2fil_filter_construct
             write(*,'(a,a)') '                              ', &
               '[-tmpl tmpl_type]'
             write(*,'(a,a)') '                              ', &
+              '[-tmpl_param tmpl_param_file]'
+            write(*,'(a,a)') '                              ', &
               '[-beam_fwhm beam_fwhm (arcmin)]'
             write(*,'(a,a)') '                              ', &
               '[-filter_heu filter_heu]'
@@ -391,6 +480,10 @@ program s2fil_filter_construct
 
           case ('-tmpl')
             tmpl_type = trim(arg)
+
+          case ('-tmpl_param')
+            tmpl_param_file = trim(arg)
+            param_file_present = .true.
 
           case ('-beam_fwhm')
             read(arg,*) beam_fwhm

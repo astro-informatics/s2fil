@@ -8,6 +8,7 @@ bin/s2fil_filter_construct \
     -noise_var 0.0048e0 \
     -beam_fwhm 13.2e0 \
     -tmpl bubble \
+    -tmpl_param tmplparam01.txt \
     -filter_heu .true. \
     -filter_type mf \
     -scale_type tmpl
