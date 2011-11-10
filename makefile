@@ -16,7 +16,8 @@ FC      = gfortran
 ifneq ($(USEPGPLOT),yes)
   OPTPGPLOT     = -DNO_PGPLOT
 endif
-OPT = $(OPTPGPLOT) -m64 -O3 -DS2FIL_VERSION=\"1.0b2\" -DS2FIL_BUILD=\"`svnversion -n .`\" 
+OPT = $(OPTPGPLOT) -m64 -O3 -DWMAP7 \
+     -DS2FIL_VERSION=\"1.0b2\" -DS2FIL_BUILD=\"`svnversion -n .`\" 
 
 
 # ======== LINKS ========

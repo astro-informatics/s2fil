@@ -52,8 +52,15 @@ program s2fil_filter_construct
 
   implicit none
 
+#ifdef WMAP1
   integer, parameter :: NUM_COMMENT_LINES_BKGND_FILE = 29 !WMAP1
-!  integer, parameter :: NUM_COMMENT_LINES_BKGND_FILE = 45   ! Value for WMAP3
+#endif
+#ifdef WMAP3
+  integer, parameter :: NUM_COMMENT_LINES_BKGND_FILE = 45   ! Value for WMAP3
+#endif
+#ifdef WMAP7
+  integer, parameter :: NUM_COMMENT_LINES_BKGND_FILE = 0   ! Value for WMAP7
+#endif
 
   character(len=S2_STRING_LEN) :: &
     filter_type_string = S2FIL_FILTER_TYPE_STR_MF
@@ -72,7 +79,8 @@ program s2fil_filter_construct
     TMPL_TYPE_GAUSSIAN = 'gaussian', &
     TMPL_TYPE_MEXHAT = 'mexhat', &
     TMPL_TYPE_MORLET = 'morlet', &
-    TMPL_TYPE_BUTTERFLY = 'butterfly'
+    TMPL_TYPE_BUTTERFLY = 'butterfly', &
+    TMPL_TYPE_BUBBLE = 'bubble'
   character(len=S2_STRING_LEN) :: tmpl_type
 
   integer :: nside, lmax, mmax, pix_scheme, background_read_lmin
@@ -142,6 +150,11 @@ program s2fil_filter_construct
      case(trim(TMPL_TYPE_BUTTERFLY))
         
         tmpl = s2_sky_init(comb_tmplmap_butterfly, nside, pix_scheme, &
+          lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case(trim(TMPL_TYPE_BUBBLE))
+        
+        tmpl = s2_sky_init(comb_tmplmap_bubble, nside, pix_scheme, &
           lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
      case default
