@@ -13,9 +13,25 @@ bin/s2fil_filter_construct \
     -filter_type mf \
     -scale_type tmpl
 
+#mean(Nobs)
+#ans =
+#     1.017326307754467e+04
+#median(Nobs)
+#ans =
+#     8.885183105468750e+03
 
-# mean
-#noise_var = (6.549/sqrt(mean(Nobs)))^2 = 0.004215894219296
+# noise based on median
+#n_var = (6.549/sqrt(median(Nobs)))^2
+#n_var =
+#   0.004827070021056
+#n_std = (6.549/sqrt(median(Nobs)))
+#n_std =
+#   0.069477118687060
 
-# median
-# (6.549/sqrt(median(Nobs)))^2 = 0.004827070021056
+# noise based on mean
+#n_var = (6.549/sqrt(mean(Nobs)))^2
+#n_var =
+#   0.004215894219296
+#n_std = (6.549/sqrt(mean(Nobs)))
+#n_std =
+#   0.064929917752113
