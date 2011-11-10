@@ -1,0 +1,8 @@
+# Template parameter file
+#
+nparam 4
+1.0
+-1.0
+10.0
+10.0
+
