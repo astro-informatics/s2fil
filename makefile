@@ -126,6 +126,7 @@ prog:    $(S2FILBIN)/s2fil_filter_construct   \
 	 $(S2FILBIN)/s2fil_localisation_thres \
          $(S2FILBIN)/s2fil_draw_dots          \
          $(S2FILBIN)/s2fil_draw_dots_only     \
+         $(S2FILBIN)/s2fil_axiloc             \
          $(S2FILBIN)/s2fil_about
 
 $(S2FILINC)/%.o: $(S2FILSRC)/%.f90
@@ -224,6 +225,11 @@ $(S2FILINC)/s2fil_draw_dots_only.o: $(S2FILPROG)/s2fil_draw_dots_only.f90 lib
 $(S2FILBIN)/s2fil_draw_dots_only:   $(S2FILINC)/s2fil_draw_dots_only.o
 	$(FC) -o $(S2FILBIN)/s2fil_draw_dots_only \
         $(S2FILINC)/s2fil_draw_dots_only.o $(LDFLAGS) $(PPFLAGS)
+
+$(S2FILINC)/s2fil_axiloc.o: $(S2FILPROG)/s2fil_axiloc.f90 lib
+$(S2FILBIN)/s2fil_axiloc:   $(S2FILINC)/s2fil_axiloc.o
+	$(FC) -o $(S2FILBIN)/s2fil_axiloc \
+        $(S2FILINC)/s2fil_axiloc.o $(LDFLAGS) $(PPFLAGS)
 
 $(S2FILINC)/s2fil_about.o: $(S2FILPROG)/s2fil_about.f90 lib
 $(S2FILBIN)/s2fil_about:   $(S2FILINC)/s2fil_about.o
