@@ -22,6 +22,7 @@
 program s2fil_axiloc
 
   use s2_types_mod
+  use s2_error_mod
   use s2_sky_mod
 
   implicit none
@@ -31,12 +32,26 @@ program s2fil_axiloc
   character(len=S2_STRING_LEN) :: filename_out_prefix
 
   character(len=1), parameter :: COMMENT_CHAR = '#'
-  integer :: fileid = 21
-
-  integer :: nside, lmax
+  integer :: fileid = 21, iostat, fail = 0
+  character(len=S2_STRING_LEN) :: line, line2
+  integer :: verbosity = 5
+  integer :: nside, lmax, nfil, ifil
   type(s2_sky) :: sky
+  type(s2_sky), allocatable :: filter(:)
+  type(s2_sky), allocatable :: mean(:)
+  type(s2_sky), allocatable :: std(:)
 
-  ! Read command line options.
+  real(s2_sp), allocatable :: filter_data_theta(:)
+  character(len=S2_STRING_LEN), allocatable :: filter_data_filename_filter(:)
+  character(len=S2_STRING_LEN), allocatable :: filter_data_filename_mean(:)
+  character(len=S2_STRING_LEN), allocatable :: filter_data_filename_std(:)
+  real(s2_sp), allocatable :: filter_data_nstd(:)
+
+
+  !----------------------------------------------------------------------------
+  ! Read command line options
+  !----------------------------------------------------------------------------
+
   call parse_options()
 
 
@@ -48,7 +63,93 @@ program s2fil_axiloc
   sky = s2_sky_init(filename_inp, S2_SKY_FILE_TYPE_MAP)
 
   ! Read filter data file.
+  open(fileid, file=filename_filter_data, form='formatted', status='old')
 
+  ! Count number of filters.
+  nfil = 0
+  do 
+     read(fileid,'(a)',iostat=iostat) line
+     if (iostat < 0) exit
+     if (line(1:1) /= COMMENT_CHAR) nfil = nfil + 1
+  end do
+  rewind(fileid)
+
+  ! Allocate space for filter data.
+  allocate(filter_data_theta(0:nfil-1), stat=fail)
+  allocate(filter_data_filename_filter(0:nfil-1), stat=fail)
+  allocate(filter_data_filename_mean(0:nfil-1), stat=fail)
+  allocate(filter_data_filename_std(0:nfil-1), stat=fail)
+  allocate(filter_data_nstd(0:nfil-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+
+  ! Read filter data.
+  ifil = 0
+  do 
+     read(fileid,'(a)',iostat=iostat) line
+     if (iostat < 0) exit
+     if (line(1:1) /= COMMENT_CHAR) then
+        read(line,'(f4.1, 2X, f4.2, 2X, a)') &
+             filter_data_theta(ifil), &
+             filter_data_nstd(ifil), &
+             line2
+        filter_data_filename_filter(ifil) = &
+             trim(line2(1:index(line2,',')-1));
+        filter_data_filename_mean(ifil) = &
+             trim(line2(index(line2,',')+2:index(line2,',',back=.true.)-1));
+        filter_data_filename_std(ifil) = &
+             trim(line2(index(line2,',',back=.true.)+2:S2_STRING_LEN));
+        ifil = ifil + 1
+     end if
+  end do
+
+  ! Write filter data.
+  if (verbosity >= 5) then
+     do ifil = 0,nfil-1
+        write(*,'(a,i2,a,f4.1)') 'filter_data_theta(', ifil, ')           = ', &
+             filter_data_theta(ifil)
+        write(*,'(a,i2,a,f4.1)') 'filter_data_nstd(', ifil, ')            = ', &
+             filter_data_nstd(ifil)
+        write(*,'(a,i2,a,a)') 'filter_data_filename_filter(', ifil, ') = ', &
+             trim(filter_data_filename_filter(ifil))
+        write(*,'(a,i2,a,a)') 'filter_data_filename_mean(', ifil, ')   = ', &
+             trim(filter_data_filename_mean(ifil))
+        write(*,'(a,i2,a,a)') 'filter_data_filename_std(', ifil, ')    = ', &
+             trim(filter_data_filename_std(ifil))
+     end do
+  end if
+  close(fileid)
+
+  ! Read filters.
+  allocate(filter(0:nfil-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+  do ifil = 0,nfil-1
+     filter(ifil) = s2_sky_init(trim(filter_data_filename_filter(ifil)), &
+          S2_SKY_FILE_TYPE_SKY)
+  end do
+
+  ! Read mean maps.
+  allocate(mean(0:nfil-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+  do ifil = 0,nfil-1
+     mean(ifil) = s2_sky_init(trim(filter_data_filename_mean(ifil)), &
+          S2_SKY_FILE_TYPE_MAP)
+  end do
+
+  ! Read std maps.
+  allocate(std(0:nfil-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+  do ifil = 0,nfil-1
+     std(ifil) = s2_sky_init(trim(filter_data_filename_std(ifil)), &
+          S2_SKY_FILE_TYPE_MAP)
+  end do
 
 
   !----------------------------------------------------------------------------
@@ -73,6 +174,15 @@ program s2fil_axiloc
   !----------------------------------------------------------------------------
 
   call s2_sky_free(sky)
+  deallocate(filter_data_theta)
+  deallocate(filter_data_nstd)
+  deallocate(filter_data_filename_filter)
+  deallocate(filter_data_filename_mean)
+  deallocate(filter_data_filename_std)
+  do ifil = 0, nfil-1
+     call s2_sky_free(filter(ifil))
+  end do
+  deallocate(filter)
 
 
  !----------------------------------------------------------------------------
