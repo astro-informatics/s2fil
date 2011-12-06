@@ -11,7 +11,7 @@ bin/s2fil_localisation_thres \
     -out data_localise/localisation_mf_bfly.txt 
 #    > data_localise/loc_mf_bfly.txt
 
-../comb-1.0/bin/comb_objgen \
+../comb/bin/comb_objgen \
     -inp data_localise/localisation_mf_bfly.txt \
     -out data_localise/bfly_obj_loc.fits \
     -tmpl butterfly -dil 0.1 -nside 128

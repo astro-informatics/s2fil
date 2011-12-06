@@ -10,7 +10,7 @@ bin/s2fil_field_construct \
     -write_filter .false.
 
 # Make sky map of wavelet coefficients.
-../fastcswt-1.0/bin/cswt_tr2sky \
+../fastcswt/bin/cswt_tr2sky \
     -inp data_field/field_mf_Tbfly_Bcmb_Stmpl_tr01.cswt \
     -nside 128 \
     -interp .true. \
