@@ -214,8 +214,11 @@ program s2fil_axiloc
   ! Save thresholded sig maps.
   if (verbosity > 1) then
      do ifil = 0,nfil-1
-        write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
-             '_sig_thres_ifil', ifil, '.fits'
+        write(line,'(a,a,i2.2,f3.2,a,i2.2,a)') trim(filename_out_prefix), &
+             '_sigthres_nstd', &
+             floor(filter_data_nstd(ifil)), &
+             filter_data_nstd(ifil)-real(floor(filter_data_nstd(ifil)),s2_sp), &
+             '_ifil', ifil, '.fits'
         call s2_sky_write_file(sig(ifil), trim(line), S2_SKY_FILE_TYPE_MAP) 
      end do
   end if
