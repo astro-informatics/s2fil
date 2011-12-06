@@ -40,6 +40,9 @@ program s2fil_axiloc
   type(s2_sky), allocatable :: filter(:)
   type(s2_sky), allocatable :: mean(:)
   type(s2_sky), allocatable :: std(:)
+  type(s2_sky), allocatable :: filtered(:)
+  type(s2_sky), allocatable :: sig(:)
+  type(s2_sky) :: tmp
 
   real(s2_sp), allocatable :: filter_data_theta(:)
   character(len=S2_STRING_LEN), allocatable :: filter_data_filename_filter(:)
@@ -156,17 +159,55 @@ program s2fil_axiloc
   ! Apply matched filters
   !----------------------------------------------------------------------------
 
+  ! Compute harmonic coefficients of input map.
+  call s2_sky_compute_alm(sky, lmax, lmax)
+  
+  ! Filter maps.
+  allocate(filtered(0:nfil-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+  do ifil = 0,nfil-1
+     filtered(ifil) = s2_sky_axiconv(sky, filter(ifil), compute_map=.true.)
+  end do
 
-
+  ! Save filtered maps.
+  if (verbosity > 1) then
+     do ifil = 0,nfil-1
+        write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
+             '_filtered_ifil', ifil, '.fits'
+        call s2_sky_write_file(filtered(ifil), trim(line), S2_SKY_FILE_TYPE_MAP) 
+     end do
+  end if
 
 
   !----------------------------------------------------------------------------
   ! Threshold filtered maps
   !----------------------------------------------------------------------------
 
+  ! Compute sig = (filtered - mean) / std maps.
+  allocate(sig(0:nfil-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+  do ifil = 0,nfil-1  
+     tmp = s2_sky_add(filtered(ifil), mean(ifil), subtract=.true.)
+     sig(ifil) = s2_sky_product(tmp, std(ifil), divide=.true.)
+     call s2_sky_free(tmp)
+  end do
+
+  ! Save sig maps.
+  if (verbosity > 1) then
+     do ifil = 0,nfil-1
+        write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
+             '_sig_ifil', ifil, '.fits'
+        call s2_sky_write_file(sig(ifil), trim(line), S2_SKY_FILE_TYPE_MAP) 
+     end do
+  end if
 
 
-  ! ...
+  ! Threshold sig maps.
+
 
 
   !----------------------------------------------------------------------------
@@ -181,8 +222,16 @@ program s2fil_axiloc
   deallocate(filter_data_filename_std)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
+     call s2_sky_free(mean(ifil))
+     call s2_sky_free(std(ifil))
+     call s2_sky_free(filtered(ifil))
+     call s2_sky_free(sig(ifil))
   end do
   deallocate(filter)
+  deallocate(mean)
+  deallocate(std)
+  deallocate(filtered)
+  deallocate(sig)
 
 
  !----------------------------------------------------------------------------
