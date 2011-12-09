@@ -42,6 +42,8 @@ program s2fil_axiloc
   type(s2_sky), allocatable :: std(:)
   type(s2_sky), allocatable :: filtered(:)
   type(s2_sky), allocatable :: sig(:)
+  type(s2_sky), allocatable :: mask(:)
+
   type(s2_sky) :: tmp
 
   real(s2_sp), allocatable :: filter_data_theta(:)
@@ -49,6 +51,14 @@ program s2fil_axiloc
   character(len=S2_STRING_LEN), allocatable :: filter_data_filename_mean(:)
   character(len=S2_STRING_LEN), allocatable :: filter_data_filename_std(:)
   real(s2_sp), allocatable :: filter_data_nstd(:)
+
+  integer, parameter :: NCENTRES_MAX = 200
+  integer, allocatable :: ncentres(:)
+  real(s2_dp), allocatable :: centres_theta_tmp(:)
+  real(s2_dp), allocatable :: centres_phi_tmp(:)
+  real(s2_dp), allocatable :: centres_theta(:,:)
+  real(s2_dp), allocatable :: centres_phi(:,:)
+  real(s2_dp) :: peak_radius
 
 
   !----------------------------------------------------------------------------
@@ -206,7 +216,6 @@ program s2fil_axiloc
      end do
   end if
 
-
   ! Threshold sig maps.
   do ifil = 0,nfil-1  
      call s2_sky_thres_abs(sig(ifil), filter_data_nstd(ifil))
@@ -225,12 +234,56 @@ program s2fil_axiloc
   end if
 
 
-
   !----------------------------------------------------------------------------
   ! Find localised regions at each scale
   !----------------------------------------------------------------------------
 
+  ! Allocate space for masks.
+  allocate(mask(0:nfil-1), stat=fail)
+  allocate(ncentres(0:nfil-1), stat=fail)
+  allocate(centres_theta(0:nfil-1, 0:NCENTRES_MAX-1), stat=fail)
+  allocate(centres_phi(0:nfil-1, 0:NCENTRES_MAX-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
 
+  ! Localise peak regions for each filter scale.
+  do ifil = 0,nfil-1  
+
+     ! Find peak regions.
+     peak_radius = filter_data_theta(ifil) / 180.0 * PI
+!     min_preak_area = 
+     call s2_sky_thres_peaks(sig(ifil), peak_radius, mask(ifil), &
+          ncentres(ifil), centres_theta_tmp, centres_phi_tmp)
+     
+     ! Save peak region data.
+     if (ncentres(ifil) > NCENTRES_MAX) then
+        call s2_error(S2_ERROR_MEM_OUT_OF_BOUNDS, 's2fil_axiloc', &
+             comment_add='Number of centres exceeds limit')
+     end if    
+     centres_theta(ifil, 0:ncentres(ifil)-1) = &
+          centres_theta_tmp(0:ncentres(ifil)-1)
+     centres_phi(ifil, 0:ncentres(ifil)-1) = &
+          centres_phi_tmp(0:ncentres(ifil)-1)
+     deallocate(centres_theta_tmp, centres_phi_tmp)
+
+  end do
+
+  ! Save region mask maps.
+  if (verbosity > 1) then
+     do ifil = 0,nfil-1
+        write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
+             '_regionmask_ifil', ifil, '.fits'
+        call s2_sky_write_file(mask(ifil), trim(line), S2_SKY_FILE_TYPE_MAP) 
+     end do
+  end if
+
+
+  !----------------------------------------------------------------------------
+  ! 
+  !----------------------------------------------------------------------------
+
+  ! Union masks.
 
 
 
@@ -247,18 +300,21 @@ program s2fil_axiloc
   deallocate(filter_data_filename_filter)
   deallocate(filter_data_filename_mean)
   deallocate(filter_data_filename_std)
+  deallocate(ncentres, centres_theta, centres_phi)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
      call s2_sky_free(mean(ifil))
      call s2_sky_free(std(ifil))
      call s2_sky_free(filtered(ifil))
      call s2_sky_free(sig(ifil))
+     call s2_sky_free(mask(ifil))
   end do
   deallocate(filter)
   deallocate(mean)
   deallocate(std)
   deallocate(filtered)
   deallocate(sig)
+  deallocate(mask)
 
 
  !----------------------------------------------------------------------------
