@@ -45,6 +45,7 @@ program s2fil_axiloc
   type(s2_sky), allocatable :: mask(:)
 
   type(s2_sky) :: tmp
+  type(s2_sky) :: union_mask
 
   real(s2_sp), allocatable :: filter_data_theta(:)
   character(len=S2_STRING_LEN), allocatable :: filter_data_filename_filter(:)
@@ -280,12 +281,30 @@ program s2fil_axiloc
 
 
   !----------------------------------------------------------------------------
-  ! 
+  ! Construction unioned mask
   !----------------------------------------------------------------------------
 
   ! Union masks.
+  union_mask = s2_sky_init(mask(0))
+  do ifil = 1,nfil-1
+     tmp = s2_sky_add(union_mask, mask(ifil))
+     call s2_sky_free(union_mask)
+     union_mask = s2_sky_init(tmp)
+     call s2_sky_free(tmp)
+  end do
+  call s2_sky_thres(union_mask, 0.1, 0.9)
+
+  ! Save unioned mask map.
+  if (verbosity > 1) then
+     write(line,'(a,a)') trim(filename_out_prefix), &
+          '_unionnmask.fits'
+     call s2_sky_write_file(union_mask, trim(line), S2_SKY_FILE_TYPE_MAP) 
+  end if
 
 
+  !----------------------------------------------------------------------------
+  !
+  !----------------------------------------------------------------------------
 
 
 
@@ -295,6 +314,7 @@ program s2fil_axiloc
   !----------------------------------------------------------------------------
 
   call s2_sky_free(sky)
+  call s2_sky_free(union_mask)
   deallocate(filter_data_theta)
   deallocate(filter_data_nstd)
   deallocate(filter_data_filename_filter)
