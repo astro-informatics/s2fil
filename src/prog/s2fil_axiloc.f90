@@ -9,6 +9,8 @@
 !!   - [-inp filename_inp]: Name of sky file (that we attempt to detect 
 !!     objects in).
 !!   - [-filter_data filename_filter_data]: Name of filter data file.
+!!   - [-theta_filter_adj theta_filter_adj (degrees)]: Maximum angular
+!!     separation between filters that are considered to be adjacent.
 !!   - [-nside nside]: Healpix resolution to consider.
 !!   - [-lmax lmax]: Maximum harmonic l to consider.
 !!   - [-out_prefix filename_out_prefix]: Prefix of output files.
@@ -24,6 +26,7 @@ program s2fil_axiloc
   use s2_types_mod
   use s2_error_mod
   use s2_sky_mod
+  use s2_vect_mod
 
   implicit none
 
@@ -35,7 +38,7 @@ program s2fil_axiloc
   integer :: fileid = 21, iostat, fail = 0
   character(len=S2_STRING_LEN) :: line, line2
   integer :: verbosity = 5
-  integer :: nside, lmax, nfil, ifil
+  integer :: nside, lmax, nfil, ifil, iadj, ireg, iregadj
   type(s2_sky) :: sky
   type(s2_sky), allocatable :: filter(:)
   type(s2_sky), allocatable :: mean(:)
@@ -59,7 +62,20 @@ program s2fil_axiloc
   real(s2_dp), allocatable :: centres_phi_tmp(:)
   real(s2_dp), allocatable :: centres_theta(:,:)
   real(s2_dp), allocatable :: centres_phi(:,:)
-  real(s2_dp) :: peak_radius
+  real(s2_dp) :: peak_radius, peak_radius_adj
+
+  type(s2_vect) :: vec0, vec1
+  real(s2_dp) :: dot
+  real(s2_sp) :: reg_sep_ang
+  logical :: discard
+  integer :: isource, nsource
+  real(s2_sp) :: theta_filter_adj = 5.0
+  real(s2_sp) :: max_amp, max_amp_nearby
+  logical, allocatable :: adj(:)
+  real(s2_sp), allocatable :: regions_amp(:)
+  real(s2_sp), allocatable :: regions_size(:)
+  real(s2_dp), allocatable :: regions_theta(:)
+  real(s2_dp), allocatable :: regions_phi(:)
 
 
   !----------------------------------------------------------------------------
@@ -183,7 +199,7 @@ program s2fil_axiloc
   end do
 
   ! Save filtered maps.
-  if (verbosity > 1) then
+  if (verbosity >= 1) then
      do ifil = 0,nfil-1
         write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
              '_filtered_ifil', ifil, '.fits'
@@ -193,7 +209,7 @@ program s2fil_axiloc
 
 
   !----------------------------------------------------------------------------
-  ! Threshold filtered maps
+  ! Compute significance maps and threshold
   !----------------------------------------------------------------------------
 
   ! Compute sig = (filtered - mean) / std maps.
@@ -209,7 +225,7 @@ program s2fil_axiloc
   end do
 
   ! Save sig maps.
-  if (verbosity > 1) then
+  if (verbosity >= 1) then
      do ifil = 0,nfil-1
         write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
              '_sig_ifil', ifil, '.fits'
@@ -223,7 +239,7 @@ program s2fil_axiloc
   end do
 
   ! Save thresholded sig maps.
-  if (verbosity > 1) then
+  if (verbosity >= 1) then
      do ifil = 0,nfil-1
         write(line,'(a,a,i2.2,f3.2,a,i2.2,a)') trim(filename_out_prefix), &
              '_sigthres_nstd', &
@@ -271,7 +287,7 @@ program s2fil_axiloc
   end do
 
   ! Save region mask maps.
-  if (verbosity > 1) then
+  if (verbosity >= 1) then
      do ifil = 0,nfil-1
         write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
              '_regionmask_ifil', ifil, '.fits'
@@ -281,7 +297,7 @@ program s2fil_axiloc
 
 
   !----------------------------------------------------------------------------
-  ! Construction unioned mask
+  ! Construct unioned mask
   !----------------------------------------------------------------------------
 
   ! Union masks.
@@ -295,7 +311,7 @@ program s2fil_axiloc
   call s2_sky_thres(union_mask, 0.1, 0.9)
 
   ! Save unioned mask map.
-  if (verbosity > 1) then
+  if (verbosity >= 1) then
      write(line,'(a,a)') trim(filename_out_prefix), &
           '_unionnmask.fits'
      call s2_sky_write_file(union_mask, trim(line), S2_SKY_FILE_TYPE_MAP) 
@@ -303,8 +319,180 @@ program s2fil_axiloc
 
 
   !----------------------------------------------------------------------------
-  !
+  ! Locate final regions by looking across scales
   !----------------------------------------------------------------------------
+
+  ! Allocate memory to store sources found.
+  allocate(adj(0:nfil-1), stat=fail)
+  allocate(regions_amp(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_size(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_theta(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_phi(0:NCENTRES_MAX-1), stat=fail)
+  if(fail /= 0) then
+     call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
+  end if
+
+  ! Locate sources.
+  isource = 0
+  do ifil = 0, nfil-1
+
+     ! Find adjacent scales.
+     adj(0:nfil-1) = .false.
+     do iadj = 0, nfil-1
+        if (iadj /= ifil) then
+           if ( abs(filter_data_theta(ifil) - filter_data_theta(iadj)) &
+                <= theta_filter_adj) then
+              adj(iadj) = .true.
+           end if
+        end if
+     end do
+
+     ! Write adjacent filter list.
+     if (verbosity >= 5) then
+        write(*,*)
+        write(*,'(a,i4)') 'ifil              = ', ifil
+        write(*,'(a,f4.1)') 'filter_data_theta = ', filter_data_theta(ifil)
+        write(*,'(a,a)') '  iadj adj(iadj)'
+        do iadj = 0, nfil-1
+           write(*,'(i6,l10)') iadj, adj(iadj)
+        end do
+     end if
+
+     ! Set peak radius for current filter.
+     peak_radius = filter_data_theta(ifil) / 180.0 * PI
+
+     ! Consider each region for the current filter.
+     do ireg = 0, ncentres(ifil)-1
+
+        ! Find max absolute amplitude of filtered field in region of
+        ! current filter.
+        max_amp = s2_sky_region_max(filtered(ifil), peak_radius, &
+             centres_theta(ifil,ireg), centres_phi(ifil,ireg))
+
+        ! Write current region.
+        if (verbosity >= 5) then
+           write(*,'(a)') 'Candidate region:'
+           write(*,'(a,i10)') '  ireg    = ', ireg
+           write(*,'(a,f10.1)') '  size    = ', filter_data_theta(ifil)
+           write(*,'(a,f10.1)') '  theta   = ', centres_theta(ifil,ireg) / PI * 180
+           write(*,'(a,f10.1)') '  phi     = ', centres_phi(ifil,ireg) / PI * 180
+           write(*,'(a,e10.4)') '  max_amp = ', max_amp
+        end if
+
+        ! Find nearby regions of adjacent scales.
+        discard = .false.
+        do iadj = 0, nfil-1
+           if (iadj /= ifil .and. adj(iadj) .and. (.not. discard)) then
+
+              ! Set peak radius for adjacent filter.
+              peak_radius_adj = filter_data_theta(iadj) / 180.0 * PI
+
+              ! Consider each region for the adjacent filters.
+              do iregadj = 0, ncentres(iadj)-1
+                 
+                 ! Compute separation between centres of regions.
+                 vec0 = s2_vect_init(1.0, &
+                      real(centres_theta(ifil,ireg),s2_sp), &
+                      real(centres_phi(ifil,ireg),s2_sp))                 
+                 vec1 = s2_vect_init(1.0, &
+                      real(centres_theta(iadj,iregadj),s2_sp), &
+                      real(centres_phi(iadj,iregadj),s2_sp))
+                 dot = s2_vect_dot(vec0, vec1)         
+                 call s2_vect_free(vec0)
+                 call s2_vect_free(vec1)
+                 if (dot > 1d0) dot = 1d0  ! Remove numerical noise that
+                                           ! could cause acos to fail.
+                 reg_sep_ang = acos(dot)
+                 reg_sep_ang = reg_sep_ang/ PI * 180.0
+
+                 ! If regions nearby then find peak in adjacent filtered field.
+                 if (reg_sep_ang < &
+                      (filter_data_theta(ifil) + filter_data_theta(iadj))) then
+
+                    ! Find max amplitude of filtered field in region of 
+                    ! adjacent filter.
+                    max_amp_nearby = &
+                         s2_sky_region_max(filtered(iadj), peak_radius_adj, &
+                         centres_theta(iadj,iregadj), centres_phi(iadj,iregadj))
+
+                    ! If max amplitude greater than max amplitude of region 
+                    ! for current filter, then 
+                    if (abs(max_amp) < abs(max_amp_nearby)) then
+                       discard = .true.
+                       ! Write region that rejected candidate.
+                       if (verbosity >= 5) then
+                          write(*,'(a)') 'Candidate region rejected by:'
+                          write(*,'(a,i10)') '  iadj    = ', iadj
+                          write(*,'(a,f10.1)') '  size    = ', filter_data_theta(iadj)
+                          write(*,'(a,i10)') '  iregadj = ', iregadj
+                          write(*,'(a,f10.1)') '  theta   = ', centres_theta(iadj,iregadj) / PI * 180
+                          write(*,'(a,f10.1)') '  phi     = ', centres_phi(iadj,iregadj) / PI * 180
+                          write(*,'(a,e10.4)') '  max_amp = ', max_amp_nearby
+                       end if
+                       exit
+                    end if
+
+                 end if
+
+              end do
+
+           end if
+        end do
+
+        ! Save region at this scale if not discarded.
+        if (.not. discard) then
+
+           ! Check do not overflow buffer.
+           if (isource >= NCENTRES_MAX) then
+              call s2_error(S2_ERROR_MEM_OUT_OF_BOUNDS, 's2fil_axiloc', &
+                   comment_add='Number of sources found exceeds limit')
+           end if
+
+           ! Save region.
+           regions_amp(isource) = max_amp
+           regions_size(isource) = filter_data_theta(ifil) / 180 * PI
+           regions_theta(isource) = centres_theta(ifil,ireg)
+           regions_phi(isource) = centres_phi(ifil,ireg)
+           isource = isource + 1
+
+        end if
+
+     end do
+
+  end do
+  nsource = isource
+
+  ! Write source parameters.
+  if (verbosity >= 5) then
+     write(*,*) 
+     write(*,'(a)') 'Detected sources:'
+     do isource = 0, nsource-1
+        write(*,*)      
+        write(*,'(a,i10)') '  isource = ', isource
+        write(*,'(a,f10.1)') '  size    = ', regions_size(isource) / PI * 180
+        write(*,'(a,f10.1)') '  theta   = ', regions_theta(isource) / PI * 180
+        write(*,'(a,f10.1)') '  phi     = ', regions_phi(isource) / PI * 180
+        write(*,'(a,e10.4)') '  amp     = ', regions_amp(isource)
+     end do
+  end if
+
+  ! Save source parameters.
+
+
+
+
+  ! For each scale
+  !   Find adjacent scales
+  !   For each region on this scale
+  !     Union nearby adjacent regions of adjacent scales
+  !     If max (of filtered field) in this region at this scale greater than 
+  !     max of adjacent scales in this region
+  !     then keep this region, otherwise throw it
+  !    Move to next region
+  ! Move to next scale
+
+
+
 
 
 
@@ -321,6 +509,8 @@ program s2fil_axiloc
   deallocate(filter_data_filename_mean)
   deallocate(filter_data_filename_std)
   deallocate(ncentres, centres_theta, centres_phi)
+  deallocate(adj)
+  deallocate(regions_amp, regions_size, regions_theta, regions_phi)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
      call s2_sky_free(mean(ifil))
@@ -386,6 +576,10 @@ program s2fil_axiloc
             write(*,'(a,a)') '                    ', &
               '[-filter_data filename_filter_data]'
             write(*,'(a,a)') '                    ', &
+              '[-theta_filter_adj theta_filter_adj (degrees)]'
+!            write(*,'(a,a)') '                    ', &
+!              '[-min_peak_area min_peak_area (steradians)]'
+            write(*,'(a,a)') '                    ', &
               '[-nside nside]'
             write(*,'(a,a)') '                    ', &
               '[-lmax lmax]'
@@ -398,6 +592,9 @@ program s2fil_axiloc
 
           case ('-filter_data')
             filename_filter_data = trim(arg)
+
+          case ('-theta_filter_adj')
+            read(arg,*) theta_filter_adj
 
           case ('-nside')
             read(arg,*) nside
