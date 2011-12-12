@@ -27,6 +27,7 @@ program s2fil_axiloc
   use s2_error_mod
   use s2_sky_mod
   use s2_vect_mod
+  use pix_tools, only: ang2pix_ring, ang2pix_nest
 
   implicit none
 
@@ -66,9 +67,9 @@ program s2fil_axiloc
   real(s2_dp) :: dot
   real(s2_sp) :: reg_sep_ang
   logical :: discard
-  integer :: isource, nsource
+  integer :: isource, nsource, iamp
   real(s2_sp) :: theta_filter_adj = 5.0
-  real(s2_sp) :: max_amp, max_amp_nearby
+  real(s2_sp) :: max_amp, max_amp_nearby, amp
   logical, allocatable :: adj(:)
   real(s2_sp), allocatable :: regions_amp(:)
   real(s2_sp), allocatable :: regions_size(:)
@@ -345,6 +346,18 @@ program s2fil_axiloc
         max_amp = s2_sky_region_max(filtered(ifil), peak_radius, &
              centres_theta(ifil,ireg), centres_phi(ifil,ireg))
 
+        ! Get amplitude of filtered field at source position.
+        if(s2_sky_get_pix_scheme(filtered(ifil)) == S2_SKY_RING) then
+           call ang2pix_ring(s2_sky_get_nside(filtered(ifil)), &
+                centres_theta(ifil,ireg), centres_phi(ifil,ireg), iamp)
+        else if(s2_sky_get_pix_scheme(filtered(ifil)) == S2_SKY_NEST) then
+           call ang2pix_nest(s2_sky_get_nside(filtered(ifil)), &
+                centres_theta(ifil,ireg), centres_phi(ifil,ireg), iamp)
+        else
+           call s2_error(S2_ERROR_SKY_PIX_INVALID, 's2fil_axiloc')
+        end if
+        amp = s2_sky_get_map_pix(filtered(ifil), iamp)
+
         ! Write current region.
         if (verbosity >= 5) then
            write(*,'(a)') 'Candidate region:'
@@ -353,6 +366,7 @@ program s2fil_axiloc
            write(*,'(a,f10.1)') '  theta   = ', centres_theta(ifil,ireg) / PI * 180
            write(*,'(a,f10.1)') '  phi     = ', centres_phi(ifil,ireg) / PI * 180
            write(*,'(a,e10.4)') '  max_amp = ', max_amp
+           write(*,'(a,e10.4)') '  amp     = ', amp
         end if
 
         ! Find nearby regions of adjacent scales.
@@ -425,7 +439,7 @@ program s2fil_axiloc
            end if
 
            ! Save region.
-           regions_amp(isource) = max_amp
+           regions_amp(isource) = amp
            regions_size(isource) = filter_data_theta(ifil) / 180 * PI
            regions_theta(isource) = centres_theta(ifil,ireg)
            regions_phi(isource) = centres_phi(ifil,ireg)
