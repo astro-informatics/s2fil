@@ -1,45 +1,45 @@
 # COMB_CSKY Output Parameter Summary
-# Produced: 14:42:47 on 06/12/2011
+# Produced: 16:07:53 on 12/12/2011
 # ----------------------------------
 
 # Healpix parameters
 # ----------------------------------
-nside =           256
-lmax =            512
+nside =           128
+lmax =            256
 
 # Compact object parameters
 # ----------------------------------
 object  1:
  name =        bubble
- amplitude =   0.5000
+ amplitude =   0.2966
  dilation =    1.0000
  alpha =       5.6148
  beta =        0.8856
  gamma =       0.0000
 object  2:
  name =        bubble
- amplitude =   0.5000
+ amplitude =   0.1942
  dilation =    1.0000
  alpha =       1.8817
  beta =        1.7385
  gamma =       0.0000
 object  3:
  name =        bubble
- amplitude =   0.5000
+ amplitude =   0.3778
  dilation =    1.0000
  alpha =       1.3678
  beta =        0.0119
  gamma =       0.0000
 object  4:
  name =        bubble
- amplitude =   0.5000
+ amplitude =   0.2904
  dilation =    1.0000
  alpha =       2.3737
  beta =        2.3374
  gamma =       0.0000
 object  5:
  name =        bubble
- amplitude =   0.5000
+ amplitude =   0.2294
  dilation =    1.0000
  alpha =       3.0072
  beta =        1.4427
