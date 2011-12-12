@@ -46,9 +46,7 @@ program s2fil_axiloc
   type(s2_sky), allocatable :: filtered(:)
   type(s2_sky), allocatable :: sig(:)
   type(s2_sky), allocatable :: mask(:)
-
   type(s2_sky) :: tmp
-  type(s2_sky) :: union_mask
 
   real(s2_sp), allocatable :: filter_data_theta(:)
   character(len=S2_STRING_LEN), allocatable :: filter_data_filename_filter(:)
@@ -297,28 +295,6 @@ program s2fil_axiloc
 
 
   !----------------------------------------------------------------------------
-  ! Construct unioned mask
-  !----------------------------------------------------------------------------
-
-  ! Union masks.
-  union_mask = s2_sky_init(mask(0))
-  do ifil = 1,nfil-1
-     tmp = s2_sky_add(union_mask, mask(ifil))
-     call s2_sky_free(union_mask)
-     union_mask = s2_sky_init(tmp)
-     call s2_sky_free(tmp)
-  end do
-  call s2_sky_thres(union_mask, 0.1, 0.9)
-
-  ! Save unioned mask map.
-  if (verbosity >= 1) then
-     write(line,'(a,a)') trim(filename_out_prefix), &
-          '_unionnmask.fits'
-     call s2_sky_write_file(union_mask, trim(line), S2_SKY_FILE_TYPE_MAP) 
-  end if
-
-
-  !----------------------------------------------------------------------------
   ! Locate final regions by looking across scales
   !----------------------------------------------------------------------------
 
@@ -476,25 +452,23 @@ program s2fil_axiloc
      end do
   end if
 
-  ! Save source parameters.
-
-
-
-
-  ! For each scale
-  !   Find adjacent scales
-  !   For each region on this scale
-  !     Union nearby adjacent regions of adjacent scales
-  !     If max (of filtered field) in this region at this scale greater than 
-  !     max of adjacent scales in this region
-  !     then keep this region, otherwise throw it
-  !    Move to next region
-  ! Move to next scale
-
-
-
-
-
+  ! Save source parameters to output file.
+  write(line,'(a,a)') trim(filename_out_prefix), &
+       '_sources.txt'
+  open(unit=fileid, file=line, status='replace', action='write')
+  write(fileid,'(a,a)') COMMENT_CHAR, ' Localised source positions'
+  write(fileid,'(a,a)') COMMENT_CHAR, ' Written by s2fil_axiloc'
+  write(fileid,'(a)') COMMENT_CHAR
+  write(fileid,'(a,i16)') 'n_sources= ', nsource
+  do isource = 0, nsource-1
+     write(fileid, '(a)') COMMENT_CHAR
+     write(fileid,'(a,e16.10)') 'amplitude= ', regions_amp(isource)
+     write(fileid,'(a,e20.10)') 'alpha= ', regions_phi(isource)
+     write(fileid,'(a,e20.10)') 'beta=  ', regions_theta(isource)
+     write(fileid,'(a,e20.10)') 'gamma= ', 0.0
+     write(fileid,'(a,e20.10)') 'size=  ', regions_size(isource)          
+  end do
+  close(fileid)
 
 
   !----------------------------------------------------------------------------
@@ -502,7 +476,6 @@ program s2fil_axiloc
   !----------------------------------------------------------------------------
 
   call s2_sky_free(sky)
-  call s2_sky_free(union_mask)
   deallocate(filter_data_theta)
   deallocate(filter_data_nstd)
   deallocate(filter_data_filename_filter)
