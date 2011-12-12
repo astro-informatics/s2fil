@@ -268,7 +268,6 @@ program s2fil_axiloc
 
      ! Find peak regions.
      peak_radius = filter_data_theta(ifil) / 180.0 * PI
-!     min_preak_area = 
      call s2_sky_thres_peaks(sig(ifil), peak_radius, mask(ifil), &
           ncentres(ifil), centres_theta_tmp, centres_phi_tmp)
      
@@ -291,6 +290,44 @@ program s2fil_axiloc
         write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
              '_regionmask_ifil', ifil, '.fits'
         call s2_sky_write_file(mask(ifil), trim(line), S2_SKY_FILE_TYPE_MAP) 
+     end do
+  end if
+
+  ! Save source parameters for each filter scale to output files.
+  if (verbosity >= 5) then
+     do ifil = 0,nfil-1  
+
+        write(line,'(a,a,i2.2,a)') trim(filename_out_prefix), &
+             '_sources_ifil', ifil, '.txt'
+        open(unit=fileid, file=line, status='replace', action='write')
+        write(fileid,'(a,a)') COMMENT_CHAR, ' Localised source positions'
+        write(fileid,'(a,a)') COMMENT_CHAR, ' Written by s2fil_axiloc'
+        write(fileid,'(a)') COMMENT_CHAR
+        write(fileid,'(a,i16)') 'n_sources= ', ncentres(ifil)
+        do ireg = 0, ncentres(ifil)-1
+
+           ! Get amplitude of filtered field at source position.
+           if(s2_sky_get_pix_scheme(filtered(ifil)) == S2_SKY_RING) then
+              call ang2pix_ring(s2_sky_get_nside(filtered(ifil)), &
+                   centres_theta(ifil,ireg), centres_phi(ifil,ireg), iamp)
+           else if(s2_sky_get_pix_scheme(filtered(ifil)) == S2_SKY_NEST) then
+              call ang2pix_nest(s2_sky_get_nside(filtered(ifil)), &
+                   centres_theta(ifil,ireg), centres_phi(ifil,ireg), iamp)
+           else
+              call s2_error(S2_ERROR_SKY_PIX_INVALID, 's2fil_axiloc')
+           end if
+           amp = s2_sky_get_map_pix(filtered(ifil), iamp)
+
+           ! Write detected source.
+           write(fileid, '(a)') COMMENT_CHAR
+           write(fileid,'(a,e16.10)') 'amplitude= ', amp
+           write(fileid,'(a,e20.10)') 'alpha= ', centres_phi(ifil,ireg)
+           write(fileid,'(a,e20.10)') 'beta=  ', centres_theta(ifil,ireg)
+           write(fileid,'(a,e20.10)') 'gamma= ', 0.0
+           write(fileid,'(a,e20.10)') 'size=  ', filter_data_theta(ifil) / 180 * PI
+        end do
+        close(fileid)
+
      end do
   end if
 

@@ -1,5 +1,5 @@
 # Filter data
-# Each row ordered by: theta size, filter sky, mean map, std map, nstd
+# Each row ordered by: theta size, nstd, filter sky, mean map, std map
 05.0, 5.00, data_in_axiloc/filters/thetac005/mf_sky01.sky, data_in_axiloc/sims/thetac005/mean.fits, data_in_axiloc/sims/thetac005/std.fits
 10.0, 5.00, data_in_axiloc/filters/thetac010/mf_sky01.sky, data_in_axiloc/sims/thetac010/mean.fits, data_in_axiloc/sims/thetac010/std.fits
 20.0, 5.00, data_in_axiloc/filters/thetac020/mf_sky01.sky, data_in_axiloc/sims/thetac020/mean.fits, data_in_axiloc/sims/thetac020/std.fits
