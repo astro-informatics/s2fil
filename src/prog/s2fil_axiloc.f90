@@ -69,12 +69,13 @@ program s2fil_axiloc
   logical :: discard
   integer :: isource, nsource, iamp
   real(s2_sp) :: theta_filter_adj = 5.0
-  real(s2_sp) :: max_amp, max_amp_nearby, amp
+  real(s2_sp) :: max_amp, max_amp_nearby, amp, sig_max
   logical, allocatable :: adj(:)
   real(s2_sp), allocatable :: regions_amp(:)
   real(s2_sp), allocatable :: regions_size(:)
   real(s2_dp), allocatable :: regions_theta(:)
   real(s2_dp), allocatable :: regions_phi(:)
+  real(s2_dp), allocatable :: regions_sig(:)
 
 
   !----------------------------------------------------------------------------
@@ -306,7 +307,7 @@ program s2fil_axiloc
         write(fileid,'(a,i16)') 'n_sources= ', ncentres(ifil)
         do ireg = 0, ncentres(ifil)-1
 
-           ! Get amplitude of filtered field at source position.
+           ! Get amplitude of filtered field and significance level at source position.
            if(s2_sky_get_pix_scheme(filtered(ifil)) == S2_SKY_RING) then
               call ang2pix_ring(s2_sky_get_nside(filtered(ifil)), &
                    centres_theta(ifil,ireg), centres_phi(ifil,ireg), iamp)
@@ -317,6 +318,7 @@ program s2fil_axiloc
               call s2_error(S2_ERROR_SKY_PIX_INVALID, 's2fil_axiloc')
            end if
            amp = s2_sky_get_map_pix(filtered(ifil), iamp)
+           sig_max = s2_sky_get_map_pix(sig(ifil), iamp)
 
            ! Write detected source.
            write(fileid, '(a)') COMMENT_CHAR
@@ -325,6 +327,7 @@ program s2fil_axiloc
            write(fileid,'(a,e20.10)') 'beta=  ', centres_theta(ifil,ireg)
            write(fileid,'(a,e20.10)') 'gamma= ', 0.0
            write(fileid,'(a,e20.10)') 'size=  ', filter_data_theta(ifil) / 180 * PI
+           write(fileid,'(a,e20.10)') 'sig=   ', sig_max
         end do
         close(fileid)
 
@@ -342,6 +345,7 @@ program s2fil_axiloc
   allocate(regions_size(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_theta(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_phi(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_sig(0:NCENTRES_MAX-1), stat=fail)
   if(fail /= 0) then
      call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
   end if
@@ -394,6 +398,7 @@ program s2fil_axiloc
            call s2_error(S2_ERROR_SKY_PIX_INVALID, 's2fil_axiloc')
         end if
         amp = s2_sky_get_map_pix(filtered(ifil), iamp)
+        sig_max = s2_sky_get_map_pix(sig(ifil), iamp)
 
         ! Write current region.
         if (verbosity >= 5) then
@@ -404,6 +409,7 @@ program s2fil_axiloc
            write(*,'(a,f10.1)') '  phi     = ', centres_phi(ifil,ireg) / PI * 180
            write(*,'(a,e10.4)') '  max_amp = ', max_amp
            write(*,'(a,e10.4)') '  amp     = ', amp
+           write(*,'(a,e10.4)') '  sig     = ', sig_max
         end if
 
         ! Find nearby regions of adjacent scales.
@@ -480,6 +486,7 @@ program s2fil_axiloc
            regions_size(isource) = filter_data_theta(ifil) / 180 * PI
            regions_theta(isource) = centres_theta(ifil,ireg)
            regions_phi(isource) = centres_phi(ifil,ireg)
+           regions_sig(isource) = sig_max
            isource = isource + 1
 
         end if
@@ -500,6 +507,7 @@ program s2fil_axiloc
         write(*,'(a,f10.1)') '  theta   = ', regions_theta(isource) / PI * 180
         write(*,'(a,f10.1)') '  phi     = ', regions_phi(isource) / PI * 180
         write(*,'(a,e10.4)') '  amp     = ', regions_amp(isource)
+        write(*,'(a,e10.4)') '  sig     = ', regions_sig(isource)
      end do
   end if
 
@@ -518,6 +526,7 @@ program s2fil_axiloc
      write(fileid,'(a,e20.10)') 'beta=  ', regions_theta(isource)
      write(fileid,'(a,e20.10)') 'gamma= ', 0.0
      write(fileid,'(a,e20.10)') 'size=  ', regions_size(isource)          
+     write(fileid,'(a,e20.10)') 'sig=   ', regions_sig(isource)
   end do
   close(fileid)
 
@@ -534,7 +543,8 @@ program s2fil_axiloc
   deallocate(filter_data_filename_std)
   deallocate(ncentres, centres_theta, centres_phi)
   deallocate(adj)
-  deallocate(regions_amp, regions_size, regions_theta, regions_phi)
+  deallocate(regions_amp, regions_sig)
+  deallocate(regions_size, regions_theta, regions_phi)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
      call s2_sky_free(mean(ifil))
