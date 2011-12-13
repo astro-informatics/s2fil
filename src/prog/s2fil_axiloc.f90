@@ -55,7 +55,7 @@ program s2fil_axiloc
   character(len=S2_STRING_LEN), allocatable :: filter_data_filename_std(:)
   real(s2_sp), allocatable :: filter_data_nstd(:)
 
-  integer, parameter :: NCENTRES_MAX = 200
+  integer, parameter :: NCENTRES_MAX = 500
   integer, allocatable :: ncentres(:)
   real(s2_dp), allocatable :: centres_theta_tmp(:)
   real(s2_dp), allocatable :: centres_phi_tmp(:)
