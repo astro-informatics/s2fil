@@ -521,7 +521,7 @@ program s2fil_axiloc
   write(fileid,'(a,i16)') 'n_sources= ', nsource
   do isource = 0, nsource-1
      write(fileid, '(a)') COMMENT_CHAR
-     write(fileid,'(a,e14.10)') 'amplitude= ', regions_amp(isource)
+     write(fileid,'(a,e20.10)') 'amplitude= ', regions_amp(isource)
      write(fileid,'(a,e24.10)') 'alpha= ', regions_phi(isource)
      write(fileid,'(a,e24.10)') 'beta=  ', regions_theta(isource)
      write(fileid,'(a,e24.10)') 'gamma= ', 0.0
