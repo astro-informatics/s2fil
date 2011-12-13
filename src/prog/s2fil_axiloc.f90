@@ -322,12 +322,12 @@ program s2fil_axiloc
 
            ! Write detected source.
            write(fileid, '(a)') COMMENT_CHAR
-           write(fileid,'(a,e16.10)') 'amplitude= ', amp
-           write(fileid,'(a,e20.10)') 'alpha= ', centres_phi(ifil,ireg)
-           write(fileid,'(a,e20.10)') 'beta=  ', centres_theta(ifil,ireg)
-           write(fileid,'(a,e20.10)') 'gamma= ', 0.0
-           write(fileid,'(a,e20.10)') 'size=  ', filter_data_theta(ifil) / 180 * PI
-           write(fileid,'(a,e20.10)') 'sig=   ', sig_max
+           write(fileid,'(a,e20.10)') 'amplitude= ', amp
+           write(fileid,'(a,e24.10)') 'alpha= ', centres_phi(ifil,ireg)
+           write(fileid,'(a,e24.10)') 'beta=  ', centres_theta(ifil,ireg)
+           write(fileid,'(a,e24.10)') 'gamma= ', 0.0
+           write(fileid,'(a,e24.10)') 'size=  ', filter_data_theta(ifil) / 180 * PI
+           write(fileid,'(a,e24.10)') 'sig=   ', sig_max
         end do
         close(fileid)
 
@@ -521,12 +521,12 @@ program s2fil_axiloc
   write(fileid,'(a,i16)') 'n_sources= ', nsource
   do isource = 0, nsource-1
      write(fileid, '(a)') COMMENT_CHAR
-     write(fileid,'(a,e16.10)') 'amplitude= ', regions_amp(isource)
-     write(fileid,'(a,e20.10)') 'alpha= ', regions_phi(isource)
-     write(fileid,'(a,e20.10)') 'beta=  ', regions_theta(isource)
-     write(fileid,'(a,e20.10)') 'gamma= ', 0.0
-     write(fileid,'(a,e20.10)') 'size=  ', regions_size(isource)          
-     write(fileid,'(a,e20.10)') 'sig=   ', regions_sig(isource)
+     write(fileid,'(a,e14.10)') 'amplitude= ', regions_amp(isource)
+     write(fileid,'(a,e24.10)') 'alpha= ', regions_phi(isource)
+     write(fileid,'(a,e24.10)') 'beta=  ', regions_theta(isource)
+     write(fileid,'(a,e24.10)') 'gamma= ', 0.0
+     write(fileid,'(a,e24.10)') 'size=  ', regions_size(isource)          
+     write(fileid,'(a,e24.10)') 'sig=   ', regions_sig(isource)
   end do
   close(fileid)
 
