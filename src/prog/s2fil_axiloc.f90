@@ -59,8 +59,10 @@ program s2fil_axiloc
   integer, allocatable :: ncentres(:)
   real(s2_dp), allocatable :: centres_theta_tmp(:)
   real(s2_dp), allocatable :: centres_phi_tmp(:)
+  real(s2_dp), allocatable :: centres_radius_tmp(:)
   real(s2_dp), allocatable :: centres_theta(:,:)
   real(s2_dp), allocatable :: centres_phi(:,:)
+  real(s2_dp), allocatable :: centres_radius(:,:)
   real(s2_dp) :: peak_radius, peak_radius_adj
 
   type(s2_vect) :: vec0, vec1
@@ -76,6 +78,7 @@ program s2fil_axiloc
   real(s2_dp), allocatable :: regions_theta(:)
   real(s2_dp), allocatable :: regions_phi(:)
   real(s2_dp), allocatable :: regions_sig(:)
+  real(s2_dp), allocatable :: regions_sig_radius(:)
 
 
   !----------------------------------------------------------------------------
@@ -260,6 +263,7 @@ program s2fil_axiloc
   allocate(ncentres(0:nfil-1), stat=fail)
   allocate(centres_theta(0:nfil-1, 0:NCENTRES_MAX-1), stat=fail)
   allocate(centres_phi(0:nfil-1, 0:NCENTRES_MAX-1), stat=fail)
+  allocate(centres_radius(0:nfil-1, 0:NCENTRES_MAX-1), stat=fail)
   if(fail /= 0) then
      call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
   end if
@@ -270,7 +274,8 @@ program s2fil_axiloc
      ! Find peak regions.
      peak_radius = filter_data_theta(ifil) / 180.0 * PI
      call s2_sky_thres_peaks(sig(ifil), peak_radius, mask(ifil), &
-          ncentres(ifil), centres_theta_tmp, centres_phi_tmp)
+          ncentres(ifil), centres_theta_tmp, centres_phi_tmp, &
+          centres_radius_tmp)
      
      ! Save peak region data.
      if (ncentres(ifil) > NCENTRES_MAX) then
@@ -281,7 +286,9 @@ program s2fil_axiloc
           centres_theta_tmp(0:ncentres(ifil)-1)
      centres_phi(ifil, 0:ncentres(ifil)-1) = &
           centres_phi_tmp(0:ncentres(ifil)-1)
-     deallocate(centres_theta_tmp, centres_phi_tmp)
+     centres_radius(ifil, 0:ncentres(ifil)-1) = &
+          centres_radius_tmp(0:ncentres(ifil)-1)
+     deallocate(centres_theta_tmp, centres_phi_tmp, centres_radius_tmp)
 
   end do
 
@@ -304,7 +311,7 @@ program s2fil_axiloc
         write(fileid,'(a,a)') COMMENT_CHAR, ' Localised source positions'
         write(fileid,'(a,a)') COMMENT_CHAR, ' Written by s2fil_axiloc'
         write(fileid,'(a)') COMMENT_CHAR
-        write(fileid,'(a,i16)') 'n_sources= ', ncentres(ifil)
+        write(fileid,'(a,i20)') 'n_sources= ', ncentres(ifil)
         do ireg = 0, ncentres(ifil)-1
 
            ! Get amplitude of filtered field and significance level at source position.
@@ -328,6 +335,7 @@ program s2fil_axiloc
            write(fileid,'(a,e24.10)') 'gamma= ', 0.0
            write(fileid,'(a,e24.10)') 'size=  ', filter_data_theta(ifil) / 180 * PI
            write(fileid,'(a,e24.10)') 'sig=   ', sig_max
+           write(fileid,'(a,e19.10)') 'sig_radius= ', centres_radius(ifil,ireg)
         end do
         close(fileid)
 
@@ -346,6 +354,7 @@ program s2fil_axiloc
   allocate(regions_theta(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_phi(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_sig(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_sig_radius(0:NCENTRES_MAX-1), stat=fail)
   if(fail /= 0) then
      call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
   end if
@@ -403,13 +412,14 @@ program s2fil_axiloc
         ! Write current region.
         if (verbosity >= 5) then
            write(*,'(a)') 'Candidate region:'
-           write(*,'(a,i10)') '  ireg    = ', ireg
-           write(*,'(a,f10.1)') '  size    = ', filter_data_theta(ifil)
-           write(*,'(a,f10.1)') '  theta   = ', centres_theta(ifil,ireg) / PI * 180
-           write(*,'(a,f10.1)') '  phi     = ', centres_phi(ifil,ireg) / PI * 180
-           write(*,'(a,e10.4)') '  max_amp = ', max_amp
-           write(*,'(a,e10.4)') '  amp     = ', amp
-           write(*,'(a,e10.4)') '  sig     = ', sig_max
+           write(*,'(a,i10)') '  ireg       = ', ireg
+           write(*,'(a,f10.1)') '  size       = ', filter_data_theta(ifil)
+           write(*,'(a,f10.1)') '  theta      = ', centres_theta(ifil,ireg) / PI * 180
+           write(*,'(a,f10.1)') '  phi        = ', centres_phi(ifil,ireg) / PI * 180
+           write(*,'(a,e10.4)') '  max_amp    = ', max_amp
+           write(*,'(a,e10.4)') '  amp        = ', amp
+           write(*,'(a,e10.4)') '  sig        = ', sig_max
+           write(*,'(a,f10.1)') '  sig_radius = ', centres_radius(ifil,ireg) / PI * 180
         end if
 
         ! Find nearby regions of adjacent scales.
@@ -449,18 +459,21 @@ program s2fil_axiloc
                          centres_theta(iadj,iregadj), centres_phi(iadj,iregadj))
 
                     ! If max amplitude greater than max amplitude of region 
-                    ! for current filter, then 
+                    ! for current filter, and amplitudes have the same sign, 
+                    ! then discard.
+!                    if (abs(max_amp) < abs(max_amp_nearby) .and. ((max_amp * max_amp_nearby) > 0)) then
                     if (abs(max_amp) < abs(max_amp_nearby)) then
                        discard = .true.
                        ! Write region that rejected candidate.
                        if (verbosity >= 5) then
                           write(*,'(a)') 'Candidate region rejected by:'
-                          write(*,'(a,i10)') '  iadj    = ', iadj
-                          write(*,'(a,f10.1)') '  size    = ', filter_data_theta(iadj)
-                          write(*,'(a,i10)') '  iregadj = ', iregadj
-                          write(*,'(a,f10.1)') '  theta   = ', centres_theta(iadj,iregadj) / PI * 180
-                          write(*,'(a,f10.1)') '  phi     = ', centres_phi(iadj,iregadj) / PI * 180
-                          write(*,'(a,e10.4)') '  max_amp = ', max_amp_nearby
+                          write(*,'(a,i10)') '  iadj       = ', iadj
+                          write(*,'(a,f10.1)') '  size       = ', filter_data_theta(iadj)
+                          write(*,'(a,i10)') '  iregadj    = ', iregadj
+                          write(*,'(a,f10.1)') '  theta      = ', centres_theta(iadj,iregadj) / PI * 180
+                          write(*,'(a,f10.1)') '  phi        = ', centres_phi(iadj,iregadj) / PI * 180
+                          write(*,'(a,e10.4)') '  max_amp    = ', max_amp_nearby
+                          write(*,'(a,f10.1)') '  sig_radius = ', centres_radius(iadj,iregadj) / PI * 180
                        end if
                        exit
                     end if
@@ -487,6 +500,7 @@ program s2fil_axiloc
            regions_theta(isource) = centres_theta(ifil,ireg)
            regions_phi(isource) = centres_phi(ifil,ireg)
            regions_sig(isource) = sig_max
+           regions_sig_radius(isource) = centres_radius(ifil,ireg) 
            isource = isource + 1
 
         end if
@@ -502,12 +516,13 @@ program s2fil_axiloc
      write(*,'(a)') 'Detected sources:'
      do isource = 0, nsource-1
         write(*,*)      
-        write(*,'(a,i10)') '  isource = ', isource
-        write(*,'(a,f10.1)') '  size    = ', regions_size(isource) / PI * 180
-        write(*,'(a,f10.1)') '  theta   = ', regions_theta(isource) / PI * 180
-        write(*,'(a,f10.1)') '  phi     = ', regions_phi(isource) / PI * 180
-        write(*,'(a,e10.4)') '  amp     = ', regions_amp(isource)
-        write(*,'(a,e10.4)') '  sig     = ', regions_sig(isource)
+        write(*,'(a,i10)') '  isource    = ', isource
+        write(*,'(a,f10.1)') '  size       = ', regions_size(isource) / PI * 180
+        write(*,'(a,f10.1)') '  theta      = ', regions_theta(isource) / PI * 180
+        write(*,'(a,f10.1)') '  phi        = ', regions_phi(isource) / PI * 180
+        write(*,'(a,e10.4)') '  amp        = ', regions_amp(isource)
+        write(*,'(a,e10.4)') '  sig        = ', regions_sig(isource)
+        write(*,'(a,e10.4)') '  sig_radius = ', regions_sig_radius(isource) / PI * 180
      end do
   end if
 
@@ -518,7 +533,7 @@ program s2fil_axiloc
   write(fileid,'(a,a)') COMMENT_CHAR, ' Localised source positions'
   write(fileid,'(a,a)') COMMENT_CHAR, ' Written by s2fil_axiloc'
   write(fileid,'(a)') COMMENT_CHAR
-  write(fileid,'(a,i16)') 'n_sources= ', nsource
+  write(fileid,'(a,i20)') 'n_sources= ', nsource
   do isource = 0, nsource-1
      write(fileid, '(a)') COMMENT_CHAR
      write(fileid,'(a,e20.10)') 'amplitude= ', regions_amp(isource)
@@ -527,6 +542,7 @@ program s2fil_axiloc
      write(fileid,'(a,e24.10)') 'gamma= ', 0.0
      write(fileid,'(a,e24.10)') 'size=  ', regions_size(isource)          
      write(fileid,'(a,e24.10)') 'sig=   ', regions_sig(isource)
+     write(fileid,'(a,e19.10)') 'sig_radius= ', regions_sig_radius(isource)
   end do
   close(fileid)
 
@@ -541,9 +557,9 @@ program s2fil_axiloc
   deallocate(filter_data_filename_filter)
   deallocate(filter_data_filename_mean)
   deallocate(filter_data_filename_std)
-  deallocate(ncentres, centres_theta, centres_phi)
+  deallocate(ncentres, centres_theta, centres_phi, centres_radius)
   deallocate(adj)
-  deallocate(regions_amp, regions_sig)
+  deallocate(regions_amp, regions_sig, regions_sig_radius)
   deallocate(regions_size, regions_theta, regions_phi)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
