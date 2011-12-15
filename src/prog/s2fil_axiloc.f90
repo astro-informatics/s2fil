@@ -461,8 +461,7 @@ program s2fil_axiloc
                     ! If max amplitude greater than max amplitude of region 
                     ! for current filter, and amplitudes have the same sign, 
                     ! then discard.
-!                    if (abs(max_amp) < abs(max_amp_nearby) .and. ((max_amp * max_amp_nearby) > 0)) then
-                    if (abs(max_amp) < abs(max_amp_nearby)) then
+                    if (abs(max_amp) < abs(max_amp_nearby) .and. ((max_amp * max_amp_nearby) > 0)) then
                        discard = .true.
                        ! Write region that rejected candidate.
                        if (verbosity >= 5) then
