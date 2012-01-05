@@ -102,7 +102,7 @@ ifeq ($(FC),f95)
 else ifeq ($(FC),g95)
   PPFLAGS = -cpp $(OPT)
 else ifeq ($(FC),gfortran)
-  PPFLAGS = -x f95-cpp-input $(OPT)
+  PPFLAGS = -cpp $(OPT)
 endif
 
 # ======== OBJECT FILES TO MAKE ========
