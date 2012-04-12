@@ -1,11 +1,11 @@
 #!/bin/sh
 
-bin/s2fil_filter_construct \
+./bin/s2fil_filter_construct \
     -out data_filter/mf_Tbubble_Bcmb_Stmpl.fil \
     -nside 128 \
     -filename_dil data_in/dilation_unity.txt \
     -bkgnd_cmb data_in/wmap_lcdm_pl_model_wmap7baoh0_CAMB.dat \
-    -noise_var 0.0048e0 \
+    -noise_var 0.02e0 \
     -beam_fwhm 13.2e0 \
     -tmpl bubble \
     -tmpl_param tmplparam01.txt \

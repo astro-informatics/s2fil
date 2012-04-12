@@ -330,6 +330,15 @@ program s2fil_filter_construct
        's2fil_filter_construct', comment_add='Background not defined')
   end if
 
+!!$! Print spectra to check units consistent.
+!!$do el = 0,lmax
+!!$   write(*,'(i5,4f12.5)') el, &
+!!$        s2_pl_get_spec_l(background_cmb, el)*el*(el+1)/2/PI, &
+!!$        s2_pl_get_spec_l(background_cmb, el), &
+!!$        s2_pl_get_spec_l(background_noise, el), &
+!!$        s2_pl_get_spec_l(background, el)
+!!$end do
+
   ! When considering beam must convolve template at each scale with beam
   ! (done in s2fil_filter_comp_filter routine).
 
