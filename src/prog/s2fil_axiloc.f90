@@ -8,6 +8,7 @@
 !!   - [-help]: Display usage information.
 !!   - [-inp filename_inp]: Name of sky file (that we attempt to detect 
 !!     objects in).
+!!   - [-file_type_in file_type_in]: Type of input file (map; alm; sky).
 !!   - [-filter_data filename_filter_data]: Name of filter data file.
 !!   - [-theta_filter_adj theta_filter_adj (degrees)]: Maximum angular
 !!     separation between filters that are considered to be adjacent.
@@ -30,6 +31,12 @@ program s2fil_axiloc
   use pix_tools, only: ang2pix_ring, ang2pix_nest
 
   implicit none
+
+  character(len=*), parameter ::  MAP_FILE = 'map'
+  character(len=*), parameter ::  ALM_FILE = 'alm'
+  character(len=*), parameter ::  SKY_FILE = 'sky'
+  integer :: file_type_in = S2_SKY_FILE_TYPE_MAP
+  character(len=S2_STRING_LEN) :: file_type_in_str = MAP_FILE
 
   character(len=S2_STRING_LEN) :: filename_inp
   character(len=S2_STRING_LEN) :: filename_filter_data
@@ -92,8 +99,21 @@ program s2fil_axiloc
   ! Read data
   !----------------------------------------------------------------------------
 
+  ! Set input sky file type.
+  select case (trim(file_type_in_str))
+    case (MAP_FILE)
+       file_type_in = S2_SKY_FILE_TYPE_MAP
+    case (ALM_FILE)
+       file_type_in = S2_SKY_FILE_TYPE_ALM
+    case (SKY_FILE)
+       file_type_in = S2_SKY_FILE_TYPE_SKY
+    case default
+       call s2_error(S2_ERROR_SKY_FILE_INVALID, 's2_axiconv', &
+         comment_add='Invalid file type option')
+  end select
+
   ! Read input sky.
-  sky = s2_sky_init(filename_inp, S2_SKY_FILE_TYPE_MAP)
+  sky = s2_sky_init(filename_inp, file_type_in)
 
   ! Read filter data file.
   open(fileid, file=filename_filter_data, form='formatted', status='old')
@@ -623,6 +643,8 @@ program s2fil_axiloc
             write(*,'(a,a)') 'Usage: s2fil_axiloc ', &
               '[-inp filename_inp]'
             write(*,'(a,a)') '                    ', &
+              '[-file_type_in file_type_in (map; alm; sky)]'
+            write(*,'(a,a)') '                    ', &
               '[-filter_data filename_filter_data]'
             write(*,'(a,a)') '                    ', &
               '[-theta_filter_adj theta_filter_adj (degrees)]'
@@ -638,6 +660,9 @@ program s2fil_axiloc
 
           case ('-inp')
             filename_inp = trim(arg) 
+
+          case ('-file_type_in')
+            file_type_in_str = trim(arg) 
 
           case ('-filter_data')
             filename_filter_data = trim(arg)
