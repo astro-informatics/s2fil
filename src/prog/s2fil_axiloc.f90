@@ -32,6 +32,14 @@ program s2fil_axiloc
 
   implicit none
 
+  interface 
+    function abs_pix(x) result (val)
+      use s2_types_mod
+      real(s2_sp), intent(in) :: x
+      real(s2_sp) :: val
+    end function abs_pix
+  end interface
+
   character(len=*), parameter ::  MAP_FILE = 'map'
   character(len=*), parameter ::  ALM_FILE = 'alm'
   character(len=*), parameter ::  SKY_FILE = 'sky'
@@ -688,29 +696,29 @@ program s2fil_axiloc
     end subroutine parse_options
 
 
-    !---------------------------------------------------------------------
-    ! abs_pix
-    !
-    !! Function to take absolute value of a map pixel value.
-    !
-    !! @author J. D. McEwen (mcewen@mrao.cam.ac.uk)
-    !
-    ! Revisions:
-    !   December 2012 - Written by Jason McEwen 
-    !---------------------------------------------------------------------
-
-    function abs_pix(x) result (val)
-
-      use s2_types_mod
-      
-      implicit none
-
-      real(s2_sp), intent(in) :: x
-      real(s2_sp) :: val
-
-      val = abs(x)
-
-    end function abs_pix
-
-
 end program s2fil_axiloc
+
+
+!---------------------------------------------------------------------
+! abs_pix
+!
+!! Function to take absolute value of a map pixel value.
+!
+!! @author J. D. McEwen (mcewen@mrao.cam.ac.uk)
+!
+! Revisions:
+!   December 2012 - Written by Jason McEwen 
+!---------------------------------------------------------------------
+
+function abs_pix(x) result (val)
+  
+  use s2_types_mod
+  
+  implicit none
+  
+  real(s2_sp), intent(in) :: x
+  real(s2_sp) :: val
+  
+  val = abs(x)
+  
+end function abs_pix
