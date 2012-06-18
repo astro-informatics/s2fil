@@ -9,6 +9,7 @@
 !!   - [-inp filename_inp]: Name of sky file (that we attempt to detect 
 !!     objects in).
 !!   - [-file_type_in file_type_in]: Type of input file (map; alm; sky).
+!!   - [-filter_mask filename_mask]: Name of optional mask.
 !!   - [-filter_data filename_filter_data]: Name of filter data file.
 !!   - [-theta_filter_adj theta_filter_adj (degrees)]: Maximum angular
 !!     separation between filters that are considered to be adjacent.
@@ -47,6 +48,8 @@ program s2fil_axiloc
   character(len=S2_STRING_LEN) :: file_type_in_str = MAP_FILE
 
   character(len=S2_STRING_LEN) :: filename_inp
+  character(len=S2_STRING_LEN) :: filename_mask
+  logical :: apply_mask = .false.
   character(len=S2_STRING_LEN) :: filename_filter_data
   character(len=S2_STRING_LEN) :: filename_out_prefix
 
@@ -56,6 +59,7 @@ program s2fil_axiloc
   integer :: verbosity = 5
   integer :: nside, lmax, nfil, ifil, iadj, ireg, iregadj
   type(s2_sky) :: sky
+  type(s2_sky) :: sky_mask, sky_temp
   type(s2_sky), allocatable :: filter(:)
   type(s2_sky), allocatable :: mean(:)
   type(s2_sky), allocatable :: std(:)
@@ -228,6 +232,25 @@ program s2fil_axiloc
   do ifil = 0,nfil-1
      filtered(ifil) = s2_sky_axiconv(sky, filter(ifil), compute_map=.true.)
   end do
+
+  ! Mask filtered maps.
+  if (apply_mask) then
+
+     ! Read input mask.
+     sky_mask = s2_sky_init(filename_mask, S2_SKY_FILE_TYPE_MAP)
+
+     ! Apply mask to each filtered map.
+     do ifil = 0,nfil-1
+        sky_temp = s2_sky_product(filtered(ifil), sky_mask)
+        call s2_sky_free(filtered(ifil))
+        filtered(ifil) = s2_sky_init(sky_temp)
+        call s2_sky_free(sky_temp)
+     end do
+
+     ! Free mask.
+     call s2_sky_free(sky_mask)
+
+  end if
 
   ! Save filtered maps.
   if (verbosity >= 1) then
@@ -653,6 +676,8 @@ program s2fil_axiloc
             write(*,'(a,a)') '                    ', &
               '[-file_type_in file_type_in (map; alm; sky)]'
             write(*,'(a,a)') '                    ', &
+              '[-mask filename_mask (optional)]'
+            write(*,'(a,a)') '                    ', &
               '[-filter_data filename_filter_data]'
             write(*,'(a,a)') '                    ', &
               '[-theta_filter_adj theta_filter_adj (degrees)]'
@@ -671,6 +696,10 @@ program s2fil_axiloc
 
           case ('-file_type_in')
             file_type_in_str = trim(arg) 
+
+          case ('-mask')
+            filename_mask = trim(arg)
+            apply_mask = .true.
 
           case ('-filter_data')
             filename_filter_data = trim(arg)
