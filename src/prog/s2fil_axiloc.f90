@@ -98,6 +98,7 @@ program s2fil_axiloc
   real(s2_dp), allocatable :: regions_phi(:)
   real(s2_dp), allocatable :: regions_sig(:)
   real(s2_dp), allocatable :: regions_sig_radius(:)
+  real(s2_dp), allocatable :: regions_mask_overlap(:)
 
 
   !----------------------------------------------------------------------------
@@ -216,6 +217,9 @@ program s2fil_axiloc
           S2_SKY_FILE_TYPE_MAP)
   end do
 
+  ! Read input mask.
+  sky_mask = s2_sky_init(filename_mask, S2_SKY_FILE_TYPE_MAP)
+
 
   !----------------------------------------------------------------------------
   ! Apply matched filters
@@ -236,9 +240,6 @@ program s2fil_axiloc
   ! Mask filtered maps.
   if (apply_mask) then
 
-     ! Read input mask.
-     sky_mask = s2_sky_init(filename_mask, S2_SKY_FILE_TYPE_MAP)
-
      ! Apply mask to each filtered map.
      do ifil = 0,nfil-1
         sky_temp = s2_sky_product(filtered(ifil), sky_mask)
@@ -246,9 +247,6 @@ program s2fil_axiloc
         filtered(ifil) = s2_sky_init(sky_temp)
         call s2_sky_free(sky_temp)
      end do
-
-     ! Free mask.
-     call s2_sky_free(sky_mask)
 
   end if
 
@@ -406,6 +404,7 @@ program s2fil_axiloc
   allocate(regions_phi(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_sig(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_sig_radius(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_mask_overlap(0:NCENTRES_MAX-1), stat=fail)
   if(fail /= 0) then
      call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
   end if
@@ -560,19 +559,26 @@ program s2fil_axiloc
   end do
   nsource = isource
 
+  ! Calculate overlap of each region with mask.
+  do isource = 0, nsource-1
+     regions_mask_overlap(isource) = s2_sky_mask_overlap(sky_mask, &
+          regions_theta(isource), regions_phi(isource), regions_size(isource))
+  end do
+
   ! Write source parameters.
   if (verbosity >= 5) then
      write(*,*) 
      write(*,'(a)') 'Detected sources:'
      do isource = 0, nsource-1
         write(*,*)      
-        write(*,'(a,i10)') '  isource    = ', isource
-        write(*,'(a,f10.1)') '  size       = ', regions_size(isource) / PI * 180
-        write(*,'(a,f10.1)') '  theta      = ', regions_theta(isource) / PI * 180
-        write(*,'(a,f10.1)') '  phi        = ', regions_phi(isource) / PI * 180
-        write(*,'(a,e10.4)') '  amp        = ', regions_amp(isource)
-        write(*,'(a,e10.4)') '  sig        = ', regions_sig(isource)
-        write(*,'(a,e10.4)') '  sig_radius = ', regions_sig_radius(isource) / PI * 180
+        write(*,'(a,i10)') '  isource      = ', isource
+        write(*,'(a,f10.1)') '  size         = ', regions_size(isource) / PI * 180
+        write(*,'(a,f10.1)') '  theta        = ', regions_theta(isource) / PI * 180
+        write(*,'(a,f10.1)') '  phi          = ', regions_phi(isource) / PI * 180
+        write(*,'(a,e10.4)') '  amp          = ', regions_amp(isource)
+        write(*,'(a,e10.4)') '  sig          = ', regions_sig(isource)
+        write(*,'(a,e10.4)') '  sig_radius   = ', regions_sig_radius(isource) / PI * 180
+        write(*,'(a,e10.4)') '  mask_overlap = ', regions_mask_overlap(isource)
      end do
   end if
 
@@ -602,6 +608,7 @@ program s2fil_axiloc
   !----------------------------------------------------------------------------
 
   call s2_sky_free(sky)
+  call s2_sky_free(sky_mask)
   deallocate(filter_data_theta)
   deallocate(filter_data_nstd)
   deallocate(filter_data_filename_filter)
@@ -610,6 +617,7 @@ program s2fil_axiloc
   deallocate(ncentres, centres_theta, centres_phi, centres_radius)
   deallocate(adj)
   deallocate(regions_amp, regions_sig, regions_sig_radius)
+  deallocate(regions_mask_overlap)
   deallocate(regions_size, regions_theta, regions_phi)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
@@ -678,6 +686,8 @@ program s2fil_axiloc
             write(*,'(a,a)') '                    ', &
               '[-mask filename_mask (optional)]'
             write(*,'(a,a)') '                    ', &
+              '[-apply_mask apply_mask]'
+            write(*,'(a,a)') '                    ', &
               '[-filter_data filename_filter_data]'
             write(*,'(a,a)') '                    ', &
               '[-theta_filter_adj theta_filter_adj (degrees)]'
@@ -699,7 +709,9 @@ program s2fil_axiloc
 
           case ('-mask')
             filename_mask = trim(arg)
-            apply_mask = .true.
+
+          case ('-apply_mask')
+            read(arg,*) apply_mask
 
           case ('-filter_data')
             filename_filter_data = trim(arg)
