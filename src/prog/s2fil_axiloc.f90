@@ -562,7 +562,8 @@ program s2fil_axiloc
   ! Calculate overlap of each region with mask.
   do isource = 0, nsource-1
      regions_mask_overlap(isource) = s2_sky_mask_overlap(sky_mask, &
-          regions_theta(isource), regions_phi(isource), regions_size(isource))
+          regions_theta(isource), regions_phi(isource), &
+          real(regions_size(isource),s2_dp))
   end do
 
   ! Write source parameters.
@@ -599,6 +600,7 @@ program s2fil_axiloc
      write(fileid,'(a,e24.10)') 'size=  ', regions_size(isource)          
      write(fileid,'(a,e24.10)') 'sig=   ', regions_sig(isource)
      write(fileid,'(a,e19.10)') 'sig_radius= ', regions_sig_radius(isource)
+     write(fileid,'(a,e17.10)') 'mask_overlap= ', regions_mask_overlap(isource)
   end do
   close(fileid)
 
@@ -684,9 +686,9 @@ program s2fil_axiloc
             write(*,'(a,a)') '                    ', &
               '[-file_type_in file_type_in (map; alm; sky)]'
             write(*,'(a,a)') '                    ', &
-              '[-mask filename_mask (optional)]'
+              '[-mask filename_mask]'
             write(*,'(a,a)') '                    ', &
-              '[-apply_mask apply_mask]'
+              '[-apply_mask apply_mask (optional)]'
             write(*,'(a,a)') '                    ', &
               '[-filter_data filename_filter_data]'
             write(*,'(a,a)') '                    ', &
