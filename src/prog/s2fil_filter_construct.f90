@@ -81,7 +81,8 @@ program s2fil_filter_construct
     TMPL_TYPE_MEXHAT = 'mexhat', &
     TMPL_TYPE_MORLET = 'morlet', &
     TMPL_TYPE_BUTTERFLY = 'butterfly', &
-    TMPL_TYPE_BUBBLE = 'bubble'
+    TMPL_TYPE_BUBBLE = 'bubble', &
+    TMPL_TYPE_TEXTURE = 'texture'
   character(len=S2_STRING_LEN) :: tmpl_type
   character(len=S2_STRING_LEN) :: tmpl_param_file
   logical :: param_file_present = .false.
@@ -204,6 +205,12 @@ program s2fil_filter_construct
              lmax, mmax, param=tmpl_params, &
              fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
+     case(trim(TMPL_TYPE_TEXTURE))
+
+        tmpl = s2_sky_init(comb_tmplmap_texture, nside, pix_scheme, &
+             lmax, mmax, param=tmpl_params, &
+             fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
      case default
 
         call s2fil_error(S2FIL_ERROR_PROG_INPUT_INVALID, &
@@ -239,6 +246,11 @@ program s2fil_filter_construct
      case(trim(TMPL_TYPE_BUBBLE))
 
         tmpl = s2_sky_init(comb_tmplmap_bubble, nside, pix_scheme, &
+             lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
+
+     case(trim(TMPL_TYPE_TEXTURE))
+
+        tmpl = s2_sky_init(comb_tmplmap_texture, nside, pix_scheme, &
              lmax, mmax, fun_type_in=S2_SKY_FUN_TYPE_SPHERE)
 
      case default
