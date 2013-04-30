@@ -99,6 +99,10 @@ program s2fil_axiloc
   real(s2_dp), allocatable :: regions_sig(:)
   real(s2_dp), allocatable :: regions_sig_radius(:)
   real(s2_dp), allocatable :: regions_mask_overlap(:)
+  real(s2_dp), allocatable :: regions_prior_size_up(:)
+  real(s2_dp), allocatable :: regions_prior_size_down(:)
+  integer :: prior_size_up_ifil, prior_size_down_ifil, ifil_p
+  integer :: masked
 
 
   !----------------------------------------------------------------------------
@@ -405,6 +409,8 @@ program s2fil_axiloc
   allocate(regions_sig(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_sig_radius(0:NCENTRES_MAX-1), stat=fail)
   allocate(regions_mask_overlap(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_prior_size_up(0:NCENTRES_MAX-1), stat=fail)
+  allocate(regions_prior_size_down(0:NCENTRES_MAX-1), stat=fail)
   if(fail /= 0) then
      call s2_error(S2_ERROR_MEM_ALLOC_FAIL, 's2fil_axiloc')
   end if
@@ -543,6 +549,33 @@ program s2fil_axiloc
                    comment_add='Number of sources found exceeds limit')
            end if
 
+           ! Compute theta prior edges as first adjacent scales where
+           ! don't see candidate at similar location.
+
+           ! Look up...
+           if (ifil == nfil-1) then
+              prior_size_up_ifil = ifil
+           else
+              do ifil_p = ifil+1, nfil-1
+                 masked = nint(s2_sky_region_max(mask(ifil_p), peak_radius/2.0, &
+                      centres_theta(ifil,ireg), centres_phi(ifil,ireg)))
+                 prior_size_up_ifil = ifil_p
+                 if (masked /= 1 ) exit
+              end do
+           end if
+
+           ! Look down...
+           if (ifil == 0) then
+              prior_size_down_ifil = ifil
+           else
+              do ifil_p = ifil-1, 0, -1
+                 masked = nint(s2_sky_region_max(mask(ifil_p), peak_radius/2.0, &
+                      centres_theta(ifil,ireg), centres_phi(ifil,ireg)))
+                 prior_size_down_ifil = ifil_p
+                 if (masked /= 1) exit
+              end do
+           end if
+
            ! Save region.
            regions_amp(isource) = amp
            regions_size(isource) = filter_data_theta(ifil) / 180 * PI
@@ -550,6 +583,8 @@ program s2fil_axiloc
            regions_phi(isource) = centres_phi(ifil,ireg)
            regions_sig(isource) = sig_max
            regions_sig_radius(isource) = centres_radius(ifil,ireg) 
+           regions_prior_size_up(isource) = filter_data_theta(prior_size_up_ifil) / 180.0 * PI
+           regions_prior_size_down(isource) = filter_data_theta(prior_size_down_ifil) / 180.0 * PI
            isource = isource + 1
 
         end if
@@ -580,6 +615,9 @@ program s2fil_axiloc
         write(*,'(a,e10.4)') '  sig          = ', regions_sig(isource)
         write(*,'(a,e10.4)') '  sig_radius   = ', regions_sig_radius(isource) / PI * 180
         write(*,'(a,e10.4)') '  mask_overlap = ', regions_mask_overlap(isource)
+        write(*,'(a,e10.4)') '  size_lo      = ', regions_prior_size_down(isource) / PI * 180
+        write(*,'(a,e10.4)') '  size_hi      = ', regions_prior_size_up(isource) / PI * 180
+
      end do
   end if
 
@@ -597,10 +635,12 @@ program s2fil_axiloc
      write(fileid,'(a,e24.10)') 'alpha= ', regions_phi(isource)
      write(fileid,'(a,e24.10)') 'beta=  ', regions_theta(isource)
      write(fileid,'(a,e24.10)') 'gamma= ', 0.0
-     write(fileid,'(a,e24.10)') 'size=  ', regions_size(isource)          
+     write(fileid,'(a,e24.10)') 'size=  ', regions_size(isource)
      write(fileid,'(a,e24.10)') 'sig=   ', regions_sig(isource)
      write(fileid,'(a,e19.10)') 'sig_radius= ', regions_sig_radius(isource)
      write(fileid,'(a,e17.10)') 'mask_overlap= ', regions_mask_overlap(isource)
+     write(fileid,'(a,e22.10)') 'size_lo= ', regions_prior_size_down(isource)
+     write(fileid,'(a,e22.10)') 'size_hi= ', regions_prior_size_up(isource)       
   end do
   close(fileid)
 
@@ -621,6 +661,7 @@ program s2fil_axiloc
   deallocate(regions_amp, regions_sig, regions_sig_radius)
   deallocate(regions_mask_overlap)
   deallocate(regions_size, regions_theta, regions_phi)
+  deallocate(regions_prior_size_down, regions_prior_size_up)
   do ifil = 0, nfil-1
      call s2_sky_free(filter(ifil))
      call s2_sky_free(mean(ifil))
