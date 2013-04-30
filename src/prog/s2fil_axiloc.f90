@@ -103,6 +103,7 @@ program s2fil_axiloc
   real(s2_dp), allocatable :: regions_prior_size_down(:)
   integer :: prior_size_up_ifil, prior_size_down_ifil, ifil_p
   integer :: masked
+  real(s2_sp) :: size_prior_radius_factor = 0.10
 
 
   !----------------------------------------------------------------------------
@@ -557,10 +558,11 @@ program s2fil_axiloc
               prior_size_up_ifil = ifil
            else
               do ifil_p = ifil+1, nfil-1
-                 masked = nint(s2_sky_region_max(mask(ifil_p), peak_radius/2.0, &
+                 masked = nint(s2_sky_region_max(mask(ifil_p),  &
+                      size_prior_radius_factor*peak_radius, &
                       centres_theta(ifil,ireg), centres_phi(ifil,ireg)))
                  prior_size_up_ifil = ifil_p
-                 if (masked /= 1 ) exit
+                 if (masked /= 1) exit
               end do
            end if
 
@@ -569,7 +571,8 @@ program s2fil_axiloc
               prior_size_down_ifil = ifil
            else
               do ifil_p = ifil-1, 0, -1
-                 masked = nint(s2_sky_region_max(mask(ifil_p), peak_radius/2.0, &
+                 masked = nint(s2_sky_region_max(mask(ifil_p), &
+                      size_prior_radius_factor*peak_radius, &
                       centres_theta(ifil,ireg), centres_phi(ifil,ireg)))
                  prior_size_down_ifil = ifil_p
                  if (masked /= 1) exit
@@ -734,6 +737,8 @@ program s2fil_axiloc
               '[-filter_data filename_filter_data]'
             write(*,'(a,a)') '                    ', &
               '[-theta_filter_adj theta_filter_adj (degrees)]'
+            write(*,'(a,a)') '                    ', &
+              '[-size_prior_radius_factor size_prior_radius_factor]'
 !            write(*,'(a,a)') '                    ', &
 !              '[-min_peak_area min_peak_area (steradians)]'
             write(*,'(a,a)') '                    ', &
@@ -761,6 +766,9 @@ program s2fil_axiloc
 
           case ('-theta_filter_adj')
             read(arg,*) theta_filter_adj
+
+          case ('-size_prior_radius_factor')
+            read(arg,*) size_prior_radius_factor
 
           case ('-nside')
             read(arg,*) nside
