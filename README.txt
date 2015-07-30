@@ -12,47 +12,53 @@ DESCRIPTION
      compact objects using a naive thresholding strategy.
 
 VERSION
-     Release 1.0, 1 July 2008
+     Release 1.1
 
 AUTHORS
-     J. D. McEwen (mcewen@mrao.cam.ac.uk)
+     J. D. McEwen (http://www.jasonmcewen.org)
 
 ACKNOWLEDGEMENTS
      M. P. Hobson
 
 REFERENCE
      If you use the code to produce published works please reference
-     the download site http://www.mrao.cam.ac.uk/~jdm57/ and our
+     the download site http://www.jasonmcewen.org/codes.html and our
      related paper:
+
        J. D. McEwen, M. P. Hobson, and A. N. Lasenby. Optimal filters
-       on the sphere. IEEE Trans. Sig. Proc., in press, 2006
+       on the sphere. IEEE Trans. Sig. Proc., 56(8), 3813-3823, 2008
        (astro-ph/0612688).
 
+       J. D. McEwen, S. M. Feeney, M. C. Johnson, and
+       H. V. Peiris. Optimal filters for detecting cosmic bubble
+       collisions. Phys. Rev. D., 85(10):103502, 2012
+       (arXiv:1202.2861).
+
 DOCUMENTATION
-     See doc/index_s2fil.html
+     See doc/index.html
 
 REQUIREMENTS
-     FastCSWT (http://www.mrao.cam.ac.uk/~jdm57/)
-     COMB (http://www.mrao.cam.ac.uk/~jdm57/)
-     S2 (http://www.mrao.cam.ac.uk/~jdm57/)
+     FastCSWT (http://www.jasonmcewen.org/codes.html)
+     COMB (http://www.jasonmcewen.org/codes.html)
+     S2 (http://www.jasonmcewen.org/codes.html)
      HEALPix (http://healpix.jpl.nasa.gov/)
      CFITSIO (http://heasarc.gsfc.nasa.gov/docs/software/fitsio/)
-		 FFTW 2.1.5 (http://www.fftw.org/)
+     FFTW 2.1.5 (http://www.fftw.org/)
 
 INSTALLATION
-     See doc/index_s2fil.html
+     See doc/index.html
 
 DOWNLOAD
-     http://www.mrao.cam.ac.uk/~jdm57/
+     http://www.jasonmcewen.org/codes.html     
      Data files at:
        http://www.mrao.cam.ac.uk/~jdm57/data/s2fil-1.0-data.tar.gz
 
 SUPPORT
-     Contact Jason McEwen (mcewen@mrao.cam.ac.uk)
+     Contact Jason McEwen
 
 NOTE
      The package is still under development
-     Please report problems/bugs by email to: mcewen@mrao.cam.ac.uk
+     Please report problems/bugs by email to Jason McEwen
 
 LICENSE
      S2FIL package to provide functionality for optimal filtering 
